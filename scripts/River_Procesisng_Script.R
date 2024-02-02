@@ -1,0 +1,133 @@
+
+rm(list = ls())
+riverBuff <- 5000
+villageBuff <- 1000
+riverFlowCutoff <- 15
+caseWeight <- FALSE
+startYear <- 2018
+finalYear <- 2022
+tYears <- finalYear - startYear +1
+caseThreshold <- 10
+
+
+library(sf)
+library(tidyverse)
+library(spdep)
+library(raster)
+library(readr)
+
+cases_2000_2022 <- read_csv("data/Cases_Compiled_2000_2022.csv")
+
+cases_sf <- cases_2000_2022 %>%
+  filter(!is.na(Longitude)) %>%
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326)
+
+zs <- read_sf("C:/Users/paul/Documents/FIND/Countries/DRC/Data/Spatial_Data/Shapefiles/ZS NOUVEAU DECOUPAGE/drc_hz_border_Ed_Area.shp")
+#rivers <- read_sf("C:/Users/paul/Documents/FIND/Countries/DRC/Data/Spatial_Data/Rasters/SRTM1/TrypElim/Hydrosheds/Shapefile/streamDissMP.shp") %>% 
+#  filter(GRID_CODE >=7)
+
+as <- read_sf("C:\\Users\\paul\\Documents\\FIND\\Countries\\DRC\\Data\\UCLA-PNLTHA Bandundu Village Lists\\BANDUNDU MERGE\\BANDUNDU HA MERGE 2.15.17", "BANDUNDU_HA_MERGE_02_15_17") %>%
+  st_transform(crs = 4326)
+
+rivers <- read_sf("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/Bandundu_H/BAndunduH_2_D.shp") %>%
+  filter(MAX_DIS_AV > riverFlowCutoff) %>%
+  mutate(RID = row_number())
+
+targets <- read_sf("C:/Users/paulb/Dropbox/Paul/LSTM/Data/DRC/Targets/Curation/DRC_Target_Curation/outputs/Shapefile/TargetDeployment_Jun_2023.shp")
+
+targets_buffer <- st_buffer(targets, 1500)
+  
+  
+# River processing --------------------------------------------------------
+
+zsBuffer <- st_buffer(zs, 1500)
+rivers_intersection <- rivers %>%
+  st_intersection(zsBuffer) %>%
+  mutate(RID2 = row_number())
+  
+rivers_intersection$Riv_Len <- st_length(rivers_intersection) # Use this for joining - will need to filter for duplicates - it has a part for each ZS. Need a way of identifying each controlled segment of river
+
+# write_sf(rivers_intersection, dsn = "C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/Bandundu_H/Processed/BAndunduH_2_DI.shp", driver = "ESRI Shapefile")
+
+
+# rivers_sj <- st_join(rivers_intersection, rivers_intersection)
+
+# rivers_sj <- st_join(rivers, zsBuffer)
+
+# Get river distances -----------------------------------------------------
+
+
+
+caseDist <- st_distance(cases_sf, rivers_intersection)
+
+
+# Rivers within buffer distance -------------------------------------------
+
+caseBufferDist <- apply(caseDist, 1, FUN = function(x)(which(x < riverBuff)))
+
+# Expanding the list
+caseLength <- sapply(caseBufferDist, function(x) length(x))
+caseRep <- rep(1:length(caseBufferDist), times = caseLength)
+riversIDs <- unlist(caseBufferDist)
+caseRiverDF <- data.frame(list("CaseID" = caseRep, "RiverIDs" = riversIDs))
+caseRiverDF$RID <- rivers_intersection$RID[caseRiverDF$RiverIDs]
+caseRiverDF$RID2 <- rivers_intersection$RID2[caseRiverDF$RiverIDs]
+caseRiverDFBind <- caseRiverDF %>%
+  bind_cols(cases_sf[caseRiverDF$CaseID,])
+
+
+# Getting totals ----------------------------------------------------------
+
+caseRiverDFBindRed <- caseRiverDFBind %>%
+  filter(Year >= startYear) %>%
+  mutate(weightCase = Cases * ((Year + 1 - startYear) / tYears))
+
+caseRiverTotals <- caseRiverDFBindRed %>%
+  group_by(RID, RID2) %>%
+  summarise(Cases = sum(Cases),
+            wCases = sum(weightCase)) %>%
+  arrange(desc(wCases))
+
+cRiver <- caseRiverTotals[1,]
+
+rivers_output <- rivers_intersection %>%
+  mutate(included = FALSE,
+         Cases = NA,
+         wCases = NA)
+
+cases_output <- caseRiverDFBindRed %>%
+  mutate(included = FALSE)
+
+cases_list <- array(dim = 0)
+rid_list <- array(dim = 0)
+rid2_list <- array(dim = 0)  
+
+# 
+# cases_list <- c(cases_list, cases_output$CaseID[cases_output$RID2 %in% cRiver$RID2])
+# rid_list <- c(rid_list, cRiver$RID)
+# rid2_list <- c(rid2_list, cRiver$RID2)
+
+cTest <- TRUE
+
+while(cTest){
+
+  caseRiverTotals <- caseRiverDFBindRed %>%
+    filter(!CaseID %in% cases_list) %>%
+    group_by(RID, RID2) %>%
+    summarise(Cases = sum(Cases),
+              wCases = sum(weightCase)) %>%
+    arrange(desc(wCases))
+  
+  cRiver <- caseRiverTotals[1,]
+
+  rivers_output$included[rivers_output$RID2 == cRiver$RID2] <- TRUE
+  rivers_output$Cases[rivers_output$RID2 == cRiver$RID2] <- cRiver$Cases
+  rivers_output$wCases[rivers_output$RID2 == cRiver$RID2] <- cRiver$wCases
+  
+  cases_list <- c(cases_list, cases_output$CaseID[cases_output$RID2 %in% cRiver$RID2])
+  rid_list <- c(rid_list, cRiver$RID)
+  rid2_list <- c(rid2_list, cRiver$RID2)
+  
+  cTest <- cRiver$Cases >= caseThreshold
+  
+}
