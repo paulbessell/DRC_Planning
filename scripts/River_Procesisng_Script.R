@@ -20,7 +20,8 @@ cases_2000_2022 <- read_csv("data/Cases_Compiled_2000_2022.csv")
 
 cases_sf <- cases_2000_2022 %>%
   filter(!is.na(Longitude)) %>%
-  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326)
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) %>%
+  mutate(CaseID = row_number())
 
 zs <- read_sf("C:/Users/paul/Documents/FIND/Countries/DRC/Data/Spatial_Data/Shapefiles/ZS NOUVEAU DECOUPAGE/drc_hz_border_Ed_Area.shp")
 #rivers <- read_sf("C:/Users/paul/Documents/FIND/Countries/DRC/Data/Spatial_Data/Rasters/SRTM1/TrypElim/Hydrosheds/Shapefile/streamDissMP.shp") %>% 
@@ -44,8 +45,9 @@ rivers <- read_sf("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v1
 load("Images/targets_Buffer.RData")
 
 
-rivers_group <- st_read("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/Bandundu_H/Processed/BAndunduH_2_PMethod.shp") %>%
+rivers_group <- st_read("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/Bandundu_H/Processed/BAndunduH_ZS_2_PMethod.shp") %>%
   mutate(SegmentID = row_number())
+rivers_group$segLength <- as.numeric(st_length(rivers_group))
 
 # Clipping rivers ---------------------------------------------------------
 
@@ -61,12 +63,12 @@ rivers_group <- rivers_group %>%
   
 # River processing --------------------------------------------------------
 
-zsBuffer <- st_buffer(zs, 1500)
-rivers_intersection <- rivers %>%
-  st_intersection(zsBuffer) %>%
-  mutate(RID2 = row_number())
-  
-rivers_intersection$Riv_Len <- st_length(rivers_intersection) # Use this for joining - will need to filter for duplicates - it has a part for each ZS. Need a way of identifying each controlled segment of river
+# zsBuffer <- st_buffer(zs, 1500)
+# rivers_intersection <- rivers %>%
+#   st_intersection(zsBuffer) %>%
+#   mutate(RID2 = row_number())
+#   
+# rivers_intersection$Riv_Len <- st_length(rivers_intersection) # Use this for joining - will need to filter for duplicates - it has a part for each ZS. Need a way of identifying each controlled segment of river
 
 # write_sf(rivers_intersection, dsn = "C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/Bandundu_H/Processed/BAndunduH_2_DI.shp", driver = "ESRI Shapefile")
 
@@ -79,7 +81,8 @@ rivers_intersection$Riv_Len <- st_length(rivers_intersection) # Use this for joi
 
 
 
-caseDist <- st_distance(cases_sf, rivers_intersection)
+# caseDist <- st_distance(cases_sf, rivers_intersection)
+caseDist <- st_distance(cases_sf, rivers_group)
 
 
 # Rivers within buffer distance -------------------------------------------
@@ -91,10 +94,12 @@ caseLength <- sapply(caseBufferDist, function(x) length(x))
 caseRep <- rep(1:length(caseBufferDist), times = caseLength)
 riversIDs <- unlist(caseBufferDist)
 caseRiverDF <- data.frame(list("CaseID" = caseRep, "RiverIDs" = riversIDs))
-caseRiverDF$RID <- rivers_intersection$RID[caseRiverDF$RiverIDs]
-caseRiverDF$RID2 <- rivers_intersection$RID2[caseRiverDF$RiverIDs]
+caseRiverDF$SegmentID <- rivers_group$SegmentID[caseRiverDF$RiverIDs]
+# caseRiverDF$RID2 <- rivers_intersection$RID2[caseRiverDF$RiverIDs]
 caseRiverDFBind <- caseRiverDF %>%
-  bind_cols(cases_sf[caseRiverDF$CaseID,])
+  bind_cols(cases_sf[caseRiverDF$CaseID,]) %>%
+  left_join(rivers_group %>%
+              dplyr::select(pRivrID, plZSAdj, cID, Controls, segLength, SegmentID), by = "SegmentID")
 
 
 # Getting totals ----------------------------------------------------------
