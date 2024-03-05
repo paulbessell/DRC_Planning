@@ -29,14 +29,35 @@ zs <- read_sf("C:/Users/paul/Documents/FIND/Countries/DRC/Data/Spatial_Data/Shap
 as <- read_sf("C:\\Users\\paul\\Documents\\FIND\\Countries\\DRC\\Data\\UCLA-PNLTHA Bandundu Village Lists\\BANDUNDU MERGE\\BANDUNDU HA MERGE 2.15.17", "BANDUNDU_HA_MERGE_02_15_17") %>%
   st_transform(crs = 4326)
 
-rivers <- read_sf("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/Bandundu_H/BAndunduH_2_D.shp") %>%
-  filter(MAX_DIS_AV > riverFlowCutoff) %>%
-  mutate(RID = row_number())
+rivers <- read_sf("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/Bandundu_H/Processed/BAndunduH_2_PMethod_D2.shp") %>%
+  filter(max_D > riverFlowCutoff) %>%
+  mutate(RID = row_number()) %>%
+  st_make_valid()
 
-targets <- read_sf("C:/Users/paulb/Dropbox/Paul/LSTM/Data/DRC/Targets/Curation/DRC_Target_Curation/outputs/Shapefile/TargetDeployment_Jun_2023.shp")
+# targets <- read_sf("C:/Users/paulb/Dropbox/Paul/LSTM/Data/DRC/Targets/Curation/DRC_Target_Curation/outputs/Shapefile/TargetDeployment_Jun_2023.shp")
 
-targets_buffer <- st_buffer(targets, 1500)
-  
+# targets_buffer <- st_buffer(targets, 1500) # These bits are painfully slow
+# targets_buffer <- st_union(targets_buffer) # These bits are painfully slow
+
+# save(targets_buffer, file = "Images/targets_Buffer.RData")  
+
+load("Images/targets_Buffer.RData")
+
+
+rivers_group <- st_read("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/Bandundu_H/Processed/BAndunduH_2_PMethod.shp") %>%
+  mutate(SegmentID = row_number())
+
+# Clipping rivers ---------------------------------------------------------
+
+riverClip <- rivers_group %>%
+  st_intersection(targets_buffer %>%
+                    st_make_valid())
+
+save(riverClip, file = "Images/Current_Rivers.RData")
+
+rivers_group <- rivers_group %>%
+  mutate("Controls" = ifelse(SegmentID %in% riverClip$SegmentID, "Controlled", "Not controlled"))
+
   
 # River processing --------------------------------------------------------
 
