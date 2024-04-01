@@ -7,7 +7,7 @@ caseWeight <- FALSE
 startYear <- 2018
 finalYear <- 2022
 tYears <- finalYear - startYear +1
-caseThreshold <- 10
+caseThreshold <- 2
 
 
 library(sf)
@@ -93,7 +93,7 @@ caseBufferDist <- apply(caseDist, 1, FUN = function(x)(which(x < riverBuff)))
 caseLength <- sapply(caseBufferDist, function(x) length(x))
 caseRep <- rep(1:length(caseBufferDist), times = caseLength)
 riversIDs <- unlist(caseBufferDist)
-caseRiverDF <- data.frame(list("CaseID" = caseRep, "RiverIDs" = riversIDs))
+caseRiverDF <- data.frame(list("CaseID2" = caseRep, "RiverIDs" = riversIDs))
 caseRiverDF$SegmentID <- rivers_group$SegmentID[caseRiverDF$RiverIDs]
 # caseRiverDF$RID2 <- rivers_intersection$RID2[caseRiverDF$RiverIDs]
 caseRiverDFBind <- caseRiverDF %>%
@@ -109,14 +109,14 @@ caseRiverDFBindRed <- caseRiverDFBind %>%
   mutate(weightCase = Cases * ((Year + 1 - startYear) / tYears))
 
 caseRiverTotals <- caseRiverDFBindRed %>%
-  group_by(RID, RID2) %>%
+  group_by(SegmentID, pRivrID, plZSAdj) %>%
   summarise(Cases = sum(Cases),
             wCases = sum(weightCase)) %>%
   arrange(desc(wCases))
 
 cRiver <- caseRiverTotals[1,]
 
-rivers_output <- rivers_intersection %>%
+rivers_output <- rivers_group %>%
   mutate(included = FALSE,
          Cases = NA,
          wCases = NA)
@@ -125,8 +125,16 @@ cases_output <- caseRiverDFBindRed %>%
   mutate(included = FALSE)
 
 cases_list <- array(dim = 0)
-rid_list <- array(dim = 0)
-rid2_list <- array(dim = 0)  
+segmentID_list <- array(dim = 0)
+pRivrID_list <- array(dim = 0)  
+
+
+### Ignore this
+zsRiverSummary <- caseRiverDFBindRed %>%
+  group_by(pRivrID, plZSAdj) %>%
+  mutate(CaseTotal = sum(Cases),
+         wCaseTotal = sum(weightCase))
+
 
 # 
 # cases_list <- c(cases_list, cases_output$CaseID[cases_output$RID2 %in% cRiver$RID2])
@@ -139,21 +147,24 @@ while(cTest){
 
   caseRiverTotals <- caseRiverDFBindRed %>%
     filter(!CaseID %in% cases_list) %>%
-    group_by(RID, RID2) %>%
+    group_by(SegmentID, pRivrID, plZSAdj) %>%
     summarise(Cases = sum(Cases),
               wCases = sum(weightCase)) %>%
     arrange(desc(wCases))
-  
+
   cRiver <- caseRiverTotals[1,]
 
-  rivers_output$included[rivers_output$RID2 == cRiver$RID2] <- TRUE
-  rivers_output$Cases[rivers_output$RID2 == cRiver$RID2] <- cRiver$Cases
-  rivers_output$wCases[rivers_output$RID2 == cRiver$RID2] <- cRiver$wCases
-  
-  cases_list <- c(cases_list, cases_output$CaseID[cases_output$RID2 %in% cRiver$RID2])
-  rid_list <- c(rid_list, cRiver$RID)
-  rid2_list <- c(rid2_list, cRiver$RID2)
-  
+  rivers_output$included[rivers_output$SegmentID == cRiver$SegmentID] <- TRUE
+  rivers_output$Cases[rivers_output$SegmentID == cRiver$SegmentID] <- cRiver$Cases
+  rivers_output$wCases[rivers_output$SegmentID == cRiver$SegmentID] <- cRiver$wCases
+
+  cases_list <- c(cases_list, cases_output$CaseID[cases_output$SegmentID %in% cRiver$SegmentID])
+  pRivrID_list <- c(pRivrID_list, cRiver$pRivrID)
+  segmentID_list <- c(segmentID_list, cRiver$SegmentID)
+
   cTest <- cRiver$Cases >= caseThreshold
-  
+
 }
+
+##Now need to reaggregate to the River ZS level
+
