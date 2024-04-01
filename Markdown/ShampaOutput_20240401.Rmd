@@ -1,0 +1,57 @@
+---
+title: "DRC VC site selection"
+author: "Paul Bessell"
+date: "2024-04-01"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+# knitr::opts_chunk$set(echo = TRUE)
+setwd("../")
+source("scripts/River_Analysis_Script_20240401.R")
+library(DT); library(leaflet); library(leaflet.providers)
+```
+
+## Introduction
+
+How to pick Inaki's next holiday
+
+```{r basic data table, echo = F}
+cFilename <- paste0("RiversExport", Sys.Date())
+
+ZSRiverDT <- ZSRiverOutput %>% 
+                st_drop_geometry() %>% 
+                mutate(across(where(is.numeric), ~round(., 3))) %>% 
+                filter(CasesTotal > caseThreshold)
+DT::datatable(ZSRiverDT, extensions = c('Scroller', 'Buttons', 'ColReorder'),
+                            escape = FALSE,
+                            options = list(deferRender = F,
+                                           colReorder = TRUE,
+                            scrollY = 300, scroller = TRUE, pageLength = 4,
+                            dom = 'Blfrtip',
+                            buttons = list('copy',
+                                           list(extend = 'csv', filename = cFilename),
+                                           list(extend = 'excel', filename = cFilename),
+                                           list(extend = 'pdf', filename = cFilename), 'print')),
+                            selection = "none")
+
+```
+
+
+### <font size = "+2"> <b> Carte des fleuves </font size></b>
+```{r Carte des fleuves, echo = F, out.width='120%'}
+riversMapping <- ZSRiverOutput %>%
+  filter(CasesTotal > caseThreshold)# %>%
+  #mutate(Current = ifelse(!is.na(Start), "red3", "blue3"))
+
+  riversMapping$lab <- paste0("<b>", "ZS = ", riversMapping$plZSAdj,
+                               "</b><br/>", "Intervention start = ", riversMapping$Start,
+                               "</b><br/>", "Total cases = ", riversMapping$CasesTotal,
+                               "</b><br/>", "Length = ", riversMapping$segLength)
+
+  leaflet(riversMapping) %>%
+    addTiles(group = "Streets") %>%
+   # addProviderTiles("Esri.WorldImagery", group = "Imagery") %>%
+    addPolylines(label = ~lapply(lab, htmltools::HTML)) 
+
+```
