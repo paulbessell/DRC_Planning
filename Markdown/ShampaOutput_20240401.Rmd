@@ -3,12 +3,25 @@ title: "DRC VC site selection"
 author: "Paul Bessell"
 date: "2024-04-01"
 output: html_document
+params:
+  RiverBuffer: 5000
+  RiverDischarge: 15
+  MinimumCases: 10
 ---
 
 ```{r setup, include=FALSE, warning=FALSE}
 # knitr::opts_chunk$set(echo = TRUE)
 setwd("../")
-source("scripts/River_Analysis_Script_20240401.R")
+riverBuff <- params$RiverBuffer
+villageBuff <- 1000
+riverFlowCutoff <- params$RiverDischarge
+caseWeight <- FALSE
+startYear <- 2019
+finalYear <- 2023
+tYears <- finalYear - startYear +1
+caseThreshold <- params$MinimumCases ### Add someting to look at case density
+
+source("scripts/River_Analysis_Script_20240401.R", encoding = "UTF-8")
 library(DT); library(leaflet); library(leaflet.providers)
 ```
 
@@ -41,17 +54,51 @@ DT::datatable(ZSRiverDT, extensions = c('Scroller', 'Buttons', 'ColReorder'),
 ### <font size = "+2"> <b> Carte des fleuves </font size></b>
 ```{r Carte des fleuves, echo = F, out.width='120%'}
 riversMapping <- ZSRiverOutput %>%
-  filter(CasesTotal > caseThreshold)# %>%
-  #mutate(Current = ifelse(!is.na(Start), "red3", "blue3"))
+  filter(CasesTotal > caseThreshold | !is.na(Start))
+riversMapping$lab <- paste0("<b>", "ZS = ", riversMapping$plZSAdj,
+                               "</b><br/>", "Intervention start = ", ifelse(is.na(riversMapping$Start), "", riversMapping$Start),
+                            "</b><br/>", "Discharge (cm) = ", round(riversMapping$Discharge,1),    
+                            "</b><br/>", "Total cases = ", round(riversMapping$CasesTotal,1),  
+                               "</b><br/>", "Total weighted cases = ", round(riversMapping$WeightTotal,1),
+                               "</b><br/>", "Cases / Km = ", round(riversMapping$casesKm,1),
+                               "</b><br/>", "Weighted cases / Km = ", round(riversMapping$WeightKm,1),
+                               "</b><br/>", "Length = ", round(riversMapping$RiverLength,1))
 
-  riversMapping$lab <- paste0("<b>", "ZS = ", riversMapping$plZSAdj,
-                               "</b><br/>", "Intervention start = ", riversMapping$Start,
-                               "</b><br/>", "Total cases = ", riversMapping$CasesTotal,
-                               "</b><br/>", "Length = ", riversMapping$segLength)
+riversMappingNew <- riversMapping %>%
+  filter(is.na(Start))
+  
+riversMappingCurrent <- riversMapping %>%
+  filter(!is.na(Start))
 
-  leaflet(riversMapping) %>%
+zsBDD <- zs %>%
+  filter(PROVINCE == "Bandundu")
+zsBDD$lab <- paste0("<b>", "ZS = ", zsBDD$NOM_ZS, "</b>")
+
+bounds <- riversMappingNew %>% 
+  st_bbox() %>% 
+  as.character()
+
+  leaflet(riversMappingNew) %>%
     addTiles(group = "Streets") %>%
-   # addProviderTiles("Esri.WorldImagery", group = "Imagery") %>%
-    addPolylines(label = ~lapply(lab, htmltools::HTML)) 
+        addPolygons(data = zsBDD,
+                fill = NA,
+                color = "black",
+                opacity = 0.8,
+                weight = 1,
+                label = ~lapply(lab, htmltools::HTML)) %>%
+    addPolylines(label = ~lapply(lab, htmltools::HTML),
+                 opacity = 1,
+                 color = "#BB173A",
+                 group = "New Interventions") %>%
+    addPolylines(data = riversMappingCurrent,
+                 label = ~lapply(lab, htmltools::HTML),
+                 opacity = 1,
+                 color = "#244D7F",
+                 group = "Current Interventions") %>%
+  fitBounds(bounds[1], bounds[2], bounds[3], bounds[4]) %>%
+    addLayersControl(
+      overlayGroups = c("New Interventions", "Current Interventions"),
+      options = layersControlOptions(collapsed = FALSE)
+    )
 
 ```

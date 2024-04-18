@@ -57,8 +57,6 @@ load("Images/Current_Rivers.RData")
 
 # River processing ------------------------------------------------------------
 
-
-
 caseDist <- st_distance(cases_sf, rivers)
 
 
