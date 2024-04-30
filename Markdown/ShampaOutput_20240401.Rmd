@@ -21,7 +21,9 @@ finalYear <- 2023
 tYears <- finalYear - startYear +1
 caseThreshold <- params$MinimumCases ### Add someting to look at case density
 
-source("scripts/River_Analysis_Script_20240401.R", encoding = "UTF-8")
+#source("scripts/River_Analysis_Script_20240401.R", encoding = "UTF-8")
+source("scripts/River_Analysis_Script_BDD_KOCC.R", encoding = "UTF-8")
+
 library(DT); library(leaflet); library(leaflet.providers)
 ```
 
@@ -40,7 +42,9 @@ DT::datatable(ZSRiverDT, extensions = c('Scroller', 'Buttons', 'ColReorder'),
                             escape = FALSE,
                             options = list(deferRender = F,
                                            colReorder = TRUE,
-                            scrollY = 300, scroller = TRUE, pageLength = 4,
+                            scrollY = 300, 
+                            scrollX = TRUE,
+                            scroller = TRUE, pageLength = 4,
                             dom = 'Blfrtip',
                             buttons = list('copy',
                                            list(extend = 'csv', filename = cFilename),
@@ -54,15 +58,28 @@ DT::datatable(ZSRiverDT, extensions = c('Scroller', 'Buttons', 'ColReorder'),
 ### <font size = "+2"> <b> Carte des fleuves </font size></b>
 ```{r Carte des fleuves, echo = F, out.width='100%'}
 riversMapping <- ZSRiverOutput %>%
-  filter(CasesTotal > caseThreshold | (Start != 0))
+  filter(CasesTotal >= caseThreshold | (Start != 0))
+riversMappingAll <- ZSRiverOutput %>%
+  filter(CasesTotal < caseThreshold & (Start == 0))
+
 riversMapping$lab <- paste0("<b>", "ZS = ", riversMapping$plZSAdj,
-                               "</b><br/>", "Intervention start = ", ifelse(is.na(riversMapping$Start), "", riversMapping$Start),
+                            "<br/>", "Province = ", riversMapping$fProvince, 
+                               "</b></b><br/>", "Intervention start = ", ifelse(riversMapping$Start==0, "", riversMapping$Start),
                             "</b><br/>", "Discharge (cm) = ", round(riversMapping$Discharge,1),    
                             "</b><br/>", "Total cases = ", round(riversMapping$CasesTotal,1),  
                                "</b><br/>", "Total weighted cases = ", round(riversMapping$WeightTotal,1),
-                               "</b><br/>", "Cases / Km = ", round(riversMapping$casesKm,1),
-                               "</b><br/>", "Weighted cases / Km = ", round(riversMapping$WeightKm,1),
+                               "</b><br/>", "Cases / Km = ", round(riversMapping$casesKm,3),
+                               "</b><br/>", "Weighted cases / Km = ", round(riversMapping$WeightKm,3),
                                "</b><br/>", "Length = ", round(riversMapping$RiverLength,1))
+
+riversMappingAll$lab <- paste0("<b>", "ZS = ", riversMappingAll$plZSAdj,
+                            "<br/>", "Province = ", riversMappingAll$fProvince, 
+                            "</b></b><br/>", "Discharge (cm) = ", round(riversMappingAll$Discharge,1),    
+                            "</b><br/>", "Total cases = ", round(riversMappingAll$CasesTotal,1),  
+                               "</b><br/>", "Total weighted cases = ", round(riversMappingAll$WeightTotal,1),
+                               "</b><br/>", "Cases / Km = ", round(riversMappingAll$casesKm,3),
+                               "</b><br/>", "Weighted cases / Km = ", round(riversMappingAll$WeightKm,3),
+                               "</b><br/>", "Length = ", round(riversMappingAll$RiverLength,1))
 
 riversMappingNew <- riversMapping %>%
   filter(Start == 0)
@@ -71,8 +88,9 @@ riversMappingCurrent <- riversMapping %>%
   filter(Start !=0)
 
 zsBDD <- zs %>%
-  filter(PROVINCE %in% c("Kwilu", "Kwango", "MAI NDOMBE"))
-zsBDD$lab <- paste0("<b>", "ZS = ", zsBDD$ZS, "</b>")
+  filter(PROVINCE %in% unique(rivers$fProvince))
+zsBDD$lab <- paste0("<b>", "ZS = ", zsBDD$ZS,
+                   "<br/>", "Province = ", zsBDD$PROVINCE, "</b>")
 
 bounds <- riversMappingNew %>% 
   st_bbox() %>% 
@@ -81,24 +99,43 @@ bounds <- riversMappingNew %>%
   leaflet(riversMappingNew) %>%
     addTiles(group = "Streets") %>%
         addPolygons(data = zsBDD,
+                fillColor = "white",
+                fillOpacity = 0,
+                color = "black",
+                opacity = 0.5,
+                weight = 1,
+                highlightOptions = highlightOptions(stroke = 4, weight = 3, opacity = 1),
+                popup = ~lapply(lab, htmltools::HTML)) %>%
+        addPolygons(data = provinces,
                 fill = NA,
                 color = "black",
-                opacity = 0.8,
-                weight = 1,
-                label = ~lapply(lab, htmltools::HTML)) %>%
-    addPolylines(label = ~lapply(lab, htmltools::HTML),
+                opacity = 1.,
+                weight = 2) %>%
+    addPolylines(data = riversMappingAll,
+                 popup = ~lapply(paste0("<b>", "Non-candidate", "<br/>",lab), htmltools::HTML),
                  opacity = 1,
-                 color = "#BB173A",
+                 weight = 1,
+                 color = "#214C9F",
+                 highlightOptions = highlightOptions(stroke = 4, weight = 6, opacity = 1),
+                 group = "Non-Candidate") %>%
+    addPolylines(popup = ~lapply(paste0("<b>", "Candidate site", "<br/>",lab), htmltools::HTML),
+                 opacity = 1,
+                 weight = 3,
+                 color = "#BF180A",
+                 highlightOptions = highlightOptions(stroke = 4, weight = 6, opacity = 1),
                  group = "New Interventions") %>%
     addPolylines(data = riversMappingCurrent,
-                 label = ~lapply(lab, htmltools::HTML),
+                 popup = ~lapply(paste0("<b>", "Current site", "<br/>",lab), htmltools::HTML),
                  opacity = 1,
-                 color = "#244D7F",
+                 weight = 3,
+                 color = "#214C9F",
+                 highlightOptions = highlightOptions(stroke = 4, weight = 6, opacity = 1),
                  group = "Current Interventions") %>%
   fitBounds(bounds[1], bounds[2], bounds[3], bounds[4]) %>%
     addLayersControl(
-      overlayGroups = c("New Interventions", "Current Interventions"),
+      overlayGroups = c("New Interventions", "Current Interventions", "Non-Candidate"),
       options = layersControlOptions(collapsed = FALSE)
-    )
+    ) %>%
+    hideGroup("Non-Candidate")
 
 ```
