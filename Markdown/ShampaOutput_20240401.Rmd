@@ -6,7 +6,7 @@ output: html_document
 params:
   RiverBuffer: 5000
   RiverDischarge: 15
-  MinimumCases: 10
+  MinimumCases: 5
 ---
 
 ```{r setup, include=FALSE, warning=FALSE}
@@ -52,9 +52,9 @@ DT::datatable(ZSRiverDT, extensions = c('Scroller', 'Buttons', 'ColReorder'),
 
 
 ### <font size = "+2"> <b> Carte des fleuves </font size></b>
-```{r Carte des fleuves, echo = F, out.width='120%'}
+```{r Carte des fleuves, echo = F, out.width='100%'}
 riversMapping <- ZSRiverOutput %>%
-  filter(CasesTotal > caseThreshold | !is.na(Start))
+  filter(CasesTotal > caseThreshold | (Start != 0))
 riversMapping$lab <- paste0("<b>", "ZS = ", riversMapping$plZSAdj,
                                "</b><br/>", "Intervention start = ", ifelse(is.na(riversMapping$Start), "", riversMapping$Start),
                             "</b><br/>", "Discharge (cm) = ", round(riversMapping$Discharge,1),    
@@ -65,14 +65,14 @@ riversMapping$lab <- paste0("<b>", "ZS = ", riversMapping$plZSAdj,
                                "</b><br/>", "Length = ", round(riversMapping$RiverLength,1))
 
 riversMappingNew <- riversMapping %>%
-  filter(is.na(Start))
+  filter(Start == 0)
   
 riversMappingCurrent <- riversMapping %>%
-  filter(!is.na(Start))
+  filter(Start !=0)
 
 zsBDD <- zs %>%
-  filter(PROVINCE == "Bandundu")
-zsBDD$lab <- paste0("<b>", "ZS = ", zsBDD$NOM_ZS, "</b>")
+  filter(PROVINCE %in% c("Kwilu", "Kwango", "MAI NDOMBE"))
+zsBDD$lab <- paste0("<b>", "ZS = ", zsBDD$ZS, "</b>")
 
 bounds <- riversMappingNew %>% 
   st_bbox() %>% 

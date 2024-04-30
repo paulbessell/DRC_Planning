@@ -1,13 +1,12 @@
 
-#rm(list = ls())
-# riverBuff <- params$RiverBuffer
+#rm(list = ls()) riverBuff <- params$RiverBuffer
 villageBuff <- 1000
-# riverFlowCutoff <- params$RiverDischarge
+riverFlowCutoff <- params$RiverDischarge
 caseWeight <- FALSE
 startYear <- 2019
 finalYear <- 2023
 tYears <- finalYear - startYear +1
-# caseThreshold <- params$MinimumCases ### Add someting to look at case density
+caseThreshold <- params$MinimumCases ### Add someting to look at case density
 
 
 library(sf)
@@ -37,6 +36,10 @@ zs <- read_sf("C:/Users/paulb/Documents/FIND/Countries/DRC/Data/Spatial_Data/Sha
   st_transform(4326) %>%
   mutate("ZS" = NOM_ZS)
 
+zs <- read_sf("C:/Users/paulb/Documents/FIND/Countries/DRC/Data/Spatial_Data/Shapefiles/ZS files/RDC_Zones_De_Sante_Repair.shp") %>% 
+  st_make_valid() %>%
+  mutate("ZS" = Nom)
+
 # AS
 as <- read_sf("C:\\Users\\paul\\Documents\\FIND\\Countries\\DRC\\Data\\UCLA-PNLTHA Bandundu Village Lists\\BANDUNDU MERGE\\BANDUNDU HA MERGE 2.15.17", "BANDUNDU_HA_MERGE_02_15_17") %>%
   st_transform(crs = 4326)
@@ -47,7 +50,7 @@ as <- read_sf("C:\\Users\\paul\\Documents\\FIND\\Countries\\DRC\\Data\\UCLA-PNLT
 
 # rivers <- st_read("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/Bandundu_H/Processed/BAndunduH_ZS_2_PMethod_5Cutoff.shp")
 
-rivers <- st_read("C:/Users/paulb/Dropbox/Paul/LSTM/Data/DRC/Targets/Rivers/Cutoff5/Rivers_ZS_Analysis_Cut_off_5.shp") %>%
+rivers <- st_read("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/DRC/Provinces/Bandundu_ZS_2_Method_5CutOff_AZS_Dist.shp") %>%
   mutate(SegmentID = row_number(),
          segLength = as.numeric(st_length(.)),
          RID = row_number()) 
@@ -56,7 +59,7 @@ rivers <- st_read("C:/Users/paulb/Dropbox/Paul/LSTM/Data/DRC/Targets/Rivers/Cuto
 #  filter(!is.na(Start))
 
 rivers <- rivers %>%
-  filter(DIS_AV_ > riverFlowCutoff | !is.na(Start))
+  filter(DIS_AV_ > riverFlowCutoff | (Start != 0))
 
 riversIDs <- rivers %>%
   st_drop_geometry() %>%
