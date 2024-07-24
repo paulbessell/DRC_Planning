@@ -47,7 +47,7 @@ provinces <- read_sf("C:/Users/paulb/Documents/FIND/Countries/DRC/Data/Spatial_D
 
 # rivers <- st_read("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/Bandundu_H/Processed/BAndunduH_ZS_2_PMethod_5Cutoff.shp")
 
-rivers <- st_read("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/DRC/Provinces/bddKasai_ZS_2_Method_5CutOff_AZS_Dist.shp") %>%
+rivers <- st_read("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/DRC/Provinces/bddKasai_ZS_2_Method_5CutOff_AZS_Dist.shp", options = "ENCODING=WINDOWS-1252") %>%
   mutate(SegmentID = row_number(),
          segLength = as.numeric(st_length(.)),
          RID = row_number()) 
