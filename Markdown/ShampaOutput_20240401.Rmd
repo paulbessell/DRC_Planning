@@ -20,8 +20,8 @@ tYears <- finalYear - startYear +1
 caseThreshold <- params$MinimumCases ### Add someting to look at case density
 
 #source("scripts/River_Analysis_Script_20240401.R", encoding = "UTF-8")
-# source("https://raw.githubusercontent.com/paulbessell/DRC_Planning/moving_to_git/scripts/River_Analysis_Script_BDD_KOCC.R")
-source("scripts/River_Analysis_Script_BDD_KOCC.R")
+source("https://raw.githubusercontent.com/paulbessell/DRC_Planning/moving_to_git/scripts/River_Analysis_Script_BDD_KOCC.R")
+# source("scripts/River_Analysis_Script_BDD_KOCC.R")
 
 library(DT); library(leaflet); library(leaflet.providers)
 ```
