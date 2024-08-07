@@ -1,12 +1,13 @@
 
 #rm(list = ls()) riverBuff <- params$RiverBuffer
 villageBuff <- 1000
-riverFlowCutoff <- params$RiverDischarge
+riverFlowCutoff <- ifelse(exists("params"), params$RiverDischarge, 15)
 caseWeight <- FALSE
 startYear <- 2019
 finalYear <- 2023
 tYears <- finalYear - startYear +1
-caseThreshold <- params$MinimumCases ### Add someting to look at case density
+caseThreshold <- ifelse(exists("params"), params$MinimumCases, 5) ### Add someting to look at case density
+riverBuff <- ifelse(exists("params"), params$RiverBuffer, 5000)
 
 
 library(sf)
@@ -22,7 +23,13 @@ library(ggpubr)
 
 # Case data
 cases <- read_csv("data/Cases_Compiled_2000_2023.csv") %>% 
-  bind_rows(read_csv("C:/Users/paulb/Dropbox/Paul/LSTM/Data/DRC/HAT_Data/Kasai/Processed/Kasai_Case_Coords_infection_Year.csv"))
+  bind_rows(read_csv("C:/Users/paulb/Dropbox/Paul/LSTM/Data/DRC/HAT_Data/Kasai/Processed/Kasai_Case_Coords_infection_Year.csv"))  %>%
+  mutate(cCaseID = row_number())
+
+load("data/distdfsort2_5k.RData")
+
+cases$ClusterID <- distdfsort2_5k$GroupID[match(cases$cCaseID, distdfsort2_5k$xcaseID)]
+
 
 cases_sf <- cases %>%
   filter(!is.na(Longitude)) %>%
@@ -35,7 +42,8 @@ cases_sf <- cases %>%
 
 zs <- read_sf("C:/Users/paulb/Documents/FIND/Countries/DRC/Data/Spatial_Data/Shapefiles/ZS files/RDC_Zones_De_Sante_Repair.shp") %>% 
   st_make_valid() %>%
-  mutate("ZS" = Nom)
+  mutate("ZS" = Nom,
+         PROVINCE = recode(PROVINCE, "MAI NDOMBE" = "Mai Ndombe"))
 
 # AS
 as <- read_sf("C:\\Users\\paul\\Documents\\FIND\\Countries\\DRC\\Data\\UCLA-PNLTHA Bandundu Village Lists\\BANDUNDU MERGE\\BANDUNDU HA MERGE 2.15.17", "BANDUNDU_HA_MERGE_02_15_17") %>%
@@ -50,7 +58,8 @@ provinces <- read_sf("C:/Users/paulb/Documents/FIND/Countries/DRC/Data/Spatial_D
 rivers <- st_read("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/DRC/Provinces/bddKasai_ZS_2_Method_5CutOff_AZS_Dist.shp", options = "ENCODING=WINDOWS-1252") %>%
   mutate(SegmentID = row_number(),
          segLength = as.numeric(st_length(.)),
-         RID = row_number()) 
+         RID = row_number(),
+         fProvince = recode(fProvince, "MAI NDOMBE" = "Mai Ndombe"))
 
 # interventionRivers <- rivers %>%
 #  filter(!is.na(Start))
@@ -80,16 +89,46 @@ caseRiverDF <- data.frame(list("CaseID" = cases_sf$CaseID,
 
 # Summarising the case data -----------------------------------------------
 
-caseRiverSummary <- caseRiverDF %>%
+caseRiverSummaryDist <- caseRiverDF %>%
   filter(Distance < riverBuff) %>%
   group_by(CaseID) %>%
   mutate(Count = n(),
          CaseAdj = Cases / Count,
          WeightAdj = Weight / Count) %>%
-  ungroup() %>%
+  ungroup() 
+
+caseRiverSummary <- caseRiverSummaryDist %>%
   group_by(RID) %>%
   summarise(CasesAdjTotal = sum(CaseAdj),
             WeightAdjTotal = sum(WeightAdj))
+
+
+# Cluster candidates ------------------------------------------------------
+# These can be used for community clusters
+candidateClusters <- cases_sf$CaseID[!cases_sf$CaseID %in% caseRiverSummaryDist$CaseID]
+cases_sf_cluster <- cases_sf %>%
+  filter(CaseID %in% candidateClusters) %>%
+  filter(!is.na(ClusterID) | Cases >= caseThreshold) %>%
+  group_by(ClusterID) %>%
+  mutate(ClusterCases = sum(Cases),
+         ClusterWeight = sum(Weight)) %>%
+  filter(ClusterCases > caseThreshold) %>%
+  group_by(geometry) %>%
+  mutate(Cases = sum(Cases),
+         Weight = sum(Weight)) %>%
+  slice_max(row_number()) %>%
+  st_join(zs %>%
+            dplyr::select(PROVINCE, ZS)) %>%
+  mutate(pVillage = ifelse(is.na(pVillage), Village, pVillage)) %>%
+  group_by(ClusterID) %>%
+  mutate("nVillages" = n()) 
+
+clusterSummarise <- cases_sf_cluster %>%
+  st_drop_geometry() %>%
+  group_by(ClusterID) %>%
+  slice_max(row_number()) %>%
+  arrange(desc(ClusterCases))
+
 
 riversIDsSummary <- rivers %>%
   dplyr::select(RID, DIS_AV_, pRivrID, plZSAdj, fProvince, Start, segLength) %>%
@@ -110,6 +149,6 @@ ZSRiverOutput <- riversIDsSummary %>%
             RiverLength = sum(segLength / 1000)) %>%
   mutate(casesKm = CasesTotal / RiverLength,
          WeightKm = WeightTotal / RiverLength) %>%
-  arrange(desc(WeightKm))
+  arrange(desc(WeightKm)) 
 
 
