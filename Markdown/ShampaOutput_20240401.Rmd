@@ -1,7 +1,5 @@
 ---
 title: "DRC VC site selection"
-author: "Paul Bessell"
-date: "2024-04-01"
 output: html_document
 params:
   RiverBuffer: 5000
@@ -12,7 +10,7 @@ params:
 ```{r setup, include=FALSE, warning=FALSE}
 # knitr::opts_chunk$set(echo = TRUE)
 setwd("../")
-riverBuff <- params$RiverBuffer
+riverBuff <- ifelse(exists("params"), params$RiverBuffer, 5000)
 villageBuff <- 1000
 riverFlowCutoff <- params$RiverDischarge
 caseWeight <- FALSE
@@ -22,23 +20,38 @@ tYears <- finalYear - startYear +1
 caseThreshold <- params$MinimumCases ### Add someting to look at case density
 
 #source("scripts/River_Analysis_Script_20240401.R", encoding = "UTF-8")
-source("https://raw.githubusercontent.com/paulbessell/DRC_Planning/moving_to_git/scripts/River_Analysis_Script_BDD_KOCC.R")
+# source("https://raw.githubusercontent.com/paulbessell/DRC_Planning/moving_to_git/scripts/River_Analysis_Script_BDD_KOCC.R")
+source("scripts/River_Analysis_Script_BDD_KOCC.R")
 
 library(DT); library(leaflet); library(leaflet.providers)
 ```
 
-## Introduction
+## Site selection tool {.tabset}
 
-How to pick Inaki's next holiday
+### Introduction
+This is the guide to picking intervention sites in DRC
 
+Rivers are chosen based on the number of cases thta are wihtin the buffer. These can be total cases, or the weighted cases during the period in question.
+
+Selected parameters:
+
+```{r parameterSummary, echo=FALSE, results='asis'}
+cat("#### River discharge cut-off > ", riverFlowCutoff, " cm/s", "\n")
+cat("#### Case threshold > ", caseThreshold, " cases", "\n")
+cat("#### River buffer = ", riverBuff, " m", "\n")
+
+```
+
+
+### Priority rivers
 ```{r basic data table, echo = F}
 cFilename <- paste0("RiversExport", Sys.Date())
 
 ZSRiverDT <- ZSRiverOutput %>% 
                 st_drop_geometry() %>% 
-                mutate(across(where(is.numeric), ~round(., 3))) %>% 
+                mutate(across(where(is.numeric), ~round(., 2))) %>% 
                 filter(CasesTotal > caseThreshold)
-DT::datatable(ZSRiverDT, extensions = c('Scroller', 'Buttons', 'ColReorder'),
+DT::datatable(ZSRiverDT, filter = 'top', extensions = c('Scroller', 'Buttons', 'ColReorder'),
                             escape = FALSE,
                             options = list(deferRender = F,
                                            colReorder = TRUE,
@@ -55,7 +68,7 @@ DT::datatable(ZSRiverDT, extensions = c('Scroller', 'Buttons', 'ColReorder'),
 ```
 
 
-### <font size = "+2"> <b> Carte des fleuves </font size></b>
+#### <font size = "+2"> <b> Carte des fleuves </font size></b>
 ```{r Carte des fleuves, echo = F, out.width='100%'}
 riversMapping <- ZSRiverOutput %>%
   filter(CasesTotal >= caseThreshold | (Start != 0))
@@ -139,3 +152,76 @@ bounds <- riversMappingNew %>%
     hideGroup("Non-Candidate")
 
 ```
+
+### Community deployment
+```{r CS data table, echo = F}
+cFilename <- paste0("CSExport", Sys.Date())
+
+clusterDT <- clusterSummarise %>% 
+  dplyr::select(ClusterID, PROVINCE, ZS.y, nVillages, ClusterCases, ClusterWeight) %>%
+  mutate(across(where(is.numeric), ~round(., 2)))
+DT::datatable(clusterDT, filter = 'top', extensions = c('Scroller', 'Buttons', 'ColReorder'),
+                            escape = FALSE,
+                            options = list(deferRender = F,
+                                           colReorder = TRUE,
+                            scrollY = 300, 
+                            scrollX = TRUE,
+                            scroller = TRUE, pageLength = 4,
+                            dom = 'Blfrtip',
+                            buttons = list('copy',
+                                           list(extend = 'csv', filename = cFilename),
+                                           list(extend = 'excel', filename = cFilename),
+                                           list(extend = 'pdf', filename = cFilename), 'print')),
+                            selection = "none")
+
+```
+
+#### <font size = "+2"> <b> Carte des sites communitaire </font size></b>
+```{r Carte des SC, echo = F, out.width='100%'}
+cases_sf_cluster$lab <- paste0("<b>", "ZS = ", cases_sf_cluster$ZS.y,
+                            "<br/>", "Province = ", cases_sf_cluster$PROVINCE, 
+                            "<br/>", "Village = ", cases_sf_cluster$pVillage, 
+                               "</b></b><br/>", "Cluster No = ", cases_sf_cluster$ClusterID,
+                            "</b><br/>", "Total cases = ", cases_sf_cluster$Cases,  
+                               "</b><br/>", "Weighted cases = ", cases_sf_cluster$Weight)
+
+riversMappingNew <- riversMapping %>%
+  filter(Start == 0)
+  
+riversMappingCurrent <- riversMapping %>%
+  filter(Start !=0)
+
+zsBDD <- zs %>%
+  filter(PROVINCE %in% unique(rivers$fProvince))
+zsBDD$lab <- paste0("<b>", "ZS = ", zsBDD$ZS,
+                   "<br/>", "Province = ", zsBDD$PROVINCE, "</b>")
+
+bounds <- riversMappingNew %>% 
+  st_bbox() %>% 
+  as.character()
+
+  leaflet(riversMappingNew) %>%
+    addTiles(group = "Streets") %>%
+        addPolygons(data = zsBDD,
+                fillColor = "white",
+                fillOpacity = 0,
+                color = "black",
+                opacity = 0.5,
+                weight = 1,
+                highlightOptions = highlightOptions(stroke = 4, weight = 3, opacity = 1),
+                popup = ~lapply(lab, htmltools::HTML)) %>%
+        addPolygons(data = provinces,
+                fill = NA,
+                color = "black",
+                opacity = 1.,
+                weight = 2) %>%
+    addCircleMarkers(data = cases_sf_cluster, 
+                     fill = "red", 
+                     popup = ~lapply(lab, htmltools::HTML),
+                     group = "Community sites",
+                     weight = 2, color = "red3") %>%
+  fitBounds(bounds[1], bounds[2], bounds[3], bounds[4]) %>%
+    addLayersControl(
+      overlayGroups = c("Community sites"),
+      options = layersControlOptions(collapsed = FALSE)
+    ) 
