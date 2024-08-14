@@ -1,5 +1,5 @@
 ---
-title: "DRC VC site selection"
+title: "Sélection des sites de LAV en RDC"
 output: html_document
 params:
   RiverBuffer: 5000
@@ -26,24 +26,24 @@ source("https://raw.githubusercontent.com/paulbessell/DRC_Planning/moving_to_git
 library(DT); library(leaflet); library(leaflet.providers)
 ```
 
-## Site selection tool {.tabset}
+## Outil de sélection de site {.tabset}
 
 ### Introduction
-This is the guide to picking intervention sites in DRC
+Il s'agit du guide de sélection des sites d'intervention en RDC
 
-Rivers are chosen based on the number of cases thta are wihtin the buffer. These can be total cases, or the weighted cases during the period in question.
+Les rivières sont choisies en fonction du nombre de cas présents dans la zone tampon. Il peut s'agir du nombre total de cas ou des cas pondérés au cours de la période en question.
 
-Selected parameters:
+Paramètres sélectionnés :
 
 ```{r parameterSummary, echo=FALSE, results='asis'}
-cat("#### River discharge cut-off > ", riverFlowCutoff, " cm/s", "\n")
-cat("#### Case threshold > ", caseThreshold, " cases", "\n")
-cat("#### River buffer = ", riverBuff, " m", "\n")
+cat("#### Débits minimaux des rivières > ", riverFlowCutoff, " cm/s", "\n")
+cat("#### Seuil de cas > ", caseThreshold, " cas", "\n")
+cat("#### Tampon fluvial = ", riverBuff, " m", "\n")
 
 ```
 
 
-### Priority rivers
+### Rivières prioritaires
 ```{r basic data table, echo = F}
 cFilename <- paste0("RiversExport", Sys.Date())
 
@@ -154,7 +154,7 @@ bounds <- riversMappingNew %>%
 
 ```
 
-### Community deployment
+### Déploiement communautaire
 ```{r CS data table, echo = F}
 cFilename <- paste0("CSExport", Sys.Date())
 
