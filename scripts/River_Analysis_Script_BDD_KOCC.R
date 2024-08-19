@@ -22,11 +22,11 @@ library(ggpubr)
 # Compiled data -----------------------------------------------------------
 
 # Case data
-cases <- read_csv("data/Cases_Compiled_2000_2023.csv") %>% 
-  bind_rows(read_csv("C:/Users/paulb/Dropbox/Paul/LSTM/Data/DRC/HAT_Data/Kasai/Processed/Kasai_Case_Coords_infection_Year.csv"))  %>%
+cases <- read_csv("data/CaseData/Cases_Compiled_2000_2023.csv") %>% 
+  bind_rows(read_csv("data/CaseData/Kasai_Case_Coords_infection_Year.csv"))  %>%
   mutate(cCaseID = row_number())
 
-load("data/distdfsort2_5k.RData")
+load("data/RImages/distdfsort2_5k.RData")
 
 cases$ClusterID <- distdfsort2_5k$GroupID[match(cases$cCaseID, distdfsort2_5k$xcaseID)]
 
@@ -40,22 +40,18 @@ cases_sf <- cases %>%
 
 # ZS
 
-zs <- read_sf("C:/Users/paulb/Documents/FIND/Countries/DRC/Data/Spatial_Data/Shapefiles/ZS files/RDC_Zones_De_Sante_Repair.shp") %>% 
+zs <- read_sf("data/Spatial/ZS/RDC_Zones_De_Sante_Repair.shp") %>% 
   st_make_valid() %>%
   mutate("ZS" = Nom,
          PROVINCE = recode(PROVINCE, "MAI NDOMBE" = "Mai Ndombe"))
 
-# AS
-as <- read_sf("C:\\Users\\paul\\Documents\\FIND\\Countries\\DRC\\Data\\UCLA-PNLTHA Bandundu Village Lists\\BANDUNDU MERGE\\BANDUNDU HA MERGE 2.15.17", "BANDUNDU_HA_MERGE_02_15_17") %>%
-  st_transform(crs = 4326)
-
-provinces <- read_sf("C:/Users/paulb/Documents/FIND/Countries/DRC/Data/Spatial_Data/Shapefiles/ZS files/Provinces/Provinces_2.shp")
+provinces <- read_sf("data/Spatial/Provinces/Provinces_2.shp")
 
 # Rivers ------------------------------------------------------------------
 
 # rivers <- st_read("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/Bandundu_H/Processed/BAndunduH_ZS_2_PMethod_5Cutoff.shp")
 
-rivers <- st_read("C:/Users/paulb/Documents/FIND/Data/Waterbodies/HydroRIVERS_v10_af_shp/DRC/Provinces/bddKasai_ZS_2_Method_5CutOff_AZS_Dist.shp", options = "ENCODING=WINDOWS-1252") %>%
+rivers <- st_read("data/Spatial/Rivers/bddKasai_ZS_2_Method_5CutOff_AZS_Dist.shp", options = "ENCODING=WINDOWS-1252") %>%
   mutate(SegmentID = row_number(),
          segLength = as.numeric(st_length(.)),
          RID = row_number(),
