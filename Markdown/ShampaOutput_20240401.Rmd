@@ -174,7 +174,7 @@ DT::datatable(clusterDT, filter = 'top', extensions = c('Scroller', 'Buttons', '
                                            list(extend = 'excel', filename = cFilename),
                                            list(extend = 'pdf', filename = cFilename), 'print')),
                             selection = "none",
-              colnames = c("GrappeID", "Province", "ZS",  "N.villages", "Debit", "Cas total", "Cas pondérés"))
+              colnames = c("GrappeID", "Province", "ZS",  "N.villages", "Cas total", "Cas pondérés"))
 
 ```
 
