@@ -5,6 +5,8 @@ params:
   RiverBuffer: 5000
   RiverDischarge: 15
   MinimumCases: 5
+  includeSitesRiviere: false
+  includeSitesCommunitaire: false
 ---
 
 ```{r setup, include=FALSE, warning=FALSE}
@@ -17,13 +19,13 @@ caseWeight <- FALSE
 startYear <- 2019
 finalYear <- 2023
 tYears <- finalYear - startYear +1
-caseThreshold <- params$MinimumCases ### Add someting to look at case density
+caseThreshold <- params$MinimumCases ### Add something to look at case density
 
 #source("scripts/River_Analysis_Script_20240401.R", encoding = "UTF-8")
 source("https://raw.githubusercontent.com/paulbessell/DRC_Planning/master/scripts/River_Analysis_Script_BDD_KOCC.R")
 # source("scripts/River_Analysis_Script_BDD_KOCC.R")
 
-library(DT); library(leaflet); library(leaflet.providers)
+library(DT); library(leaflet)
 ```
 
 ## Outil de sélection de site
@@ -43,8 +45,8 @@ cat("#### Tampon fluvial = ", riverBuff, " m", "\n")
 ```
 
 
-### Rivières prioritaires
-```{r basic data table, echo = F}
+###  <font size = "+4"> <b> Rivières prioritaires </font size></b>
+```{r basic data table, echo = F, eval = params$includeSitesRiviere}
 cFilename <- paste0("RiversExport", Sys.Date())
 
 ZSRiverDT <- ZSRiverOutput %>% 
@@ -70,7 +72,7 @@ DT::datatable(ZSRiverDT, filter = 'top', extensions = c('Scroller', 'Buttons', '
 
 
 #### <font size = "+2"> <b> Carte des fleuves </font size></b>
-```{r Carte des fleuves, echo = F, out.width='100%'}
+```{r Carte des fleuves, echo = F, out.width='100%', eval = params$includeSitesRiviere}
 riversMapping <- ZSRiverOutput %>%
   filter(CasesTotal >= caseThreshold | (Start != 0))
 riversMappingAll <- ZSRiverOutput %>%
@@ -113,7 +115,7 @@ bounds <- riversMappingNew %>%
   leaflet(riversMappingNew) %>%
     addTiles(group = "Streets") %>%
         addPolygons(data = zsBDD,
-                fillColor = "white",
+               fillColor = "white",
                 fillOpacity = 0,
                 color = "black",
                 opacity = 0.5,
@@ -155,7 +157,7 @@ bounds <- riversMappingNew %>%
 ```
 
 ### <font size = "+4"> <b>  Déploiement communautaire </font size></b>
-```{r CS data table, echo = F}
+```{r CS data table, echo = F, eval = params$includeSitesCommunitaire}
 cFilename <- paste0("CSExport", Sys.Date())
 
 clusterDT <- clusterSummarise %>% 
@@ -179,7 +181,7 @@ DT::datatable(clusterDT, filter = 'top', extensions = c('Scroller', 'Buttons', '
 ```
 
 #### Carte des sites communitaire
-```{r Carte des SC, echo = F, out.width='100%'}
+```{r Carte des SC, echo = F, out.width='100%', eval = params$includeSitesCommunitaire}
 cases_sf_cluster$lab <- paste0("<b>", "ZS = ", cases_sf_cluster$ZS.y,
                             "<br/>", "Province = ", cases_sf_cluster$PROVINCE, 
                             "<br/>", "Village = ", cases_sf_cluster$pVillage, 
@@ -205,7 +207,7 @@ bounds <- riversMappingNew %>%
   leaflet(riversMappingNew) %>%
     addTiles(group = "Streets") %>%
         addPolygons(data = zsBDD,
-                fillColor = "white",
+               fillColor = "white",
                 fillOpacity = 0,
                 color = "black",
                 opacity = 0.5,
