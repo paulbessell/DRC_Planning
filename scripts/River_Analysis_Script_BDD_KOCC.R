@@ -117,7 +117,10 @@ cases_sf_cluster <- cases_sf %>%
             dplyr::select(PROVINCE, ZS)) %>%
   mutate(pVillage = ifelse(is.na(pVillage), Village, pVillage)) %>%
   group_by(ClusterID) %>%
-  mutate("nVillages" = n()) 
+  mutate("nVillages" = n()) %>%
+  dplyr::select(-Province)
+
+st_write(cases_sf_cluster, "output/sites_communitaire/Sites_communitaire.shp", delete_layer = T)
 
 clusterSummarise <- cases_sf_cluster %>%
   st_drop_geometry() %>%
@@ -147,4 +150,4 @@ ZSRiverOutput <- riversIDsSummary %>%
          WeightKm = WeightTotal / RiverLength) %>%
   arrange(desc(WeightKm)) 
 
-
+st_write(ZSRiverOutput, "output/rivieres/Rivers_Target.shp", delete_layer = T)
