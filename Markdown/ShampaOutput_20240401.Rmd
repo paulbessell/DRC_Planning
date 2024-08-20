@@ -2,24 +2,25 @@
 title: "Sélection des sites de LAV en RDC"
 output: html_document
 params:
-  RiverBuffer: 5000
-  RiverDischarge: 15
-  MinimumCases: 5
-  includeSitesRiviere: false
-  includeSitesCommunitaire: false
+  Tampon du riviere: 5000
+  Debit minimal du riviere: 15
+  Total du cas minimal: 5
+  Debut annee de analyse: 2019
+  Inclure des sites fluviaux: false
+  Inclure des sites communautaires: false
 ---
 
 ```{r setup, include=FALSE, warning=FALSE}
 # knitr::opts_chunk$set(echo = TRUE)
 setwd("../")
-riverBuff <- ifelse(exists("params"), params$RiverBuffer, 5000)
+riverBuff <- ifelse(exists("params"), params$`Tampon du riviere`, 5000)
 villageBuff <- 1000
-riverFlowCutoff <- params$RiverDischarge
+riverFlowCutoff <- params$`Debit minimal du riviere`
 caseWeight <- FALSE
-startYear <- 2019
+startYear <- ifelse(exists("params"), params$`Debut annee de analyse`, 2019)
 finalYear <- 2023
 tYears <- finalYear - startYear +1
-caseThreshold <- params$MinimumCases ### Add something to look at case density
+caseThreshold <- params$`Total du cas minimal` ### Add something to look at case density
 
 #source("scripts/River_Analysis_Script_20240401.R", encoding = "UTF-8")
 source("https://raw.githubusercontent.com/paulbessell/DRC_Planning/master/scripts/River_Analysis_Script_BDD_KOCC.R")
@@ -46,7 +47,7 @@ cat("#### Tampon fluvial = ", riverBuff, " m", "\n")
 
 
 ###  <font size = "+4"> <b> Rivières prioritaires </font size></b>
-```{r basic data table, echo = F, eval = params$includeSitesRiviere}
+```{r basic data table, echo = F, eval = params$`Inclure des sites fluviaux`}
 cFilename <- paste0("RiversExport", Sys.Date())
 
 ZSRiverDT <- ZSRiverOutput %>% 
@@ -72,7 +73,7 @@ DT::datatable(ZSRiverDT, filter = 'top', extensions = c('Scroller', 'Buttons', '
 
 
 #### <font size = "+2"> <b> Carte des fleuves </font size></b>
-```{r Carte des fleuves, echo = F, out.width='100%', eval = params$includeSitesRiviere}
+```{r Carte des fleuves, echo = F, out.width='100%', eval = params$`Inclure des sites fluviaux`}
 riversMapping <- ZSRiverOutput %>%
   filter(CasesTotal >= caseThreshold | (Start != 0))
 riversMappingAll <- ZSRiverOutput %>%
@@ -157,7 +158,7 @@ bounds <- riversMappingNew %>%
 ```
 
 ### <font size = "+4"> <b>  Déploiement communautaire </font size></b>
-```{r CS data table, echo = F, eval = params$includeSitesCommunitaire}
+```{r CS data table, echo = F, eval = params$`Inclure des sites communautaires`}
 cFilename <- paste0("CSExport", Sys.Date())
 
 clusterDT <- clusterSummarise %>% 
@@ -180,8 +181,8 @@ DT::datatable(clusterDT, filter = 'top', extensions = c('Scroller', 'Buttons', '
 
 ```
 
-#### Carte des sites communitaire
-```{r Carte des SC, echo = F, out.width='100%', eval = params$includeSitesCommunitaire}
+#### <font size = "+2"> <b> Carte des sites communitaire </font size></b>
+```{r Carte des SC, echo = F, out.width='100%', eval = params$`Inclure des sites communautaires`}
 cases_sf_cluster$lab <- paste0("<b>", "ZS = ", cases_sf_cluster$ZS.y,
                             "<br/>", "Province = ", cases_sf_cluster$PROVINCE, 
                             "<br/>", "Village = ", cases_sf_cluster$pVillage, 
