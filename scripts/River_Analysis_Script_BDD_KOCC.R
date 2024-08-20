@@ -1,13 +1,13 @@
 
 #rm(list = ls()) riverBuff <- params$RiverBuffer
 villageBuff <- 1000
-riverFlowCutoff <- ifelse(exists("params"), params$RiverDischarge, 15)
+riverFlowCutoff <- ifelse(exists("params"), params$`Debit minimal du riviere`, 15)
 caseWeight <- FALSE
-startYear <- 2019
+startYear <- ifelse(exists("params"), params$`Debut annee de analyse`, 2019)
 finalYear <- 2023
 tYears <- finalYear - startYear +1
-caseThreshold <- ifelse(exists("params"), params$MinimumCases, 5) ### Add someting to look at case density
-riverBuff <- ifelse(exists("params"), params$RiverBuffer, 5000)
+caseThreshold <- ifelse(exists("params"), params$`Total du cas minimal`, 5) ### Add someting to look at case density
+riverBuff <- ifelse(exists("params"), params$`Tampon du riviere`, 5000)
 
 
 library(sf)
@@ -36,7 +36,7 @@ cases_sf <- cases %>%
          Year %in% startYear:finalYear) %>%
   st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) %>%
   mutate(CaseID = row_number(),
-        Weight = (Year - 2018) / 5)
+        Weight = (Year - startYear - 1) / tYears)
 
 # ZS
 
