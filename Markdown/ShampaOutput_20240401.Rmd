@@ -26,7 +26,7 @@ source("https://raw.githubusercontent.com/paulbessell/DRC_Planning/master/script
 library(DT); library(leaflet); library(leaflet.providers)
 ```
 
-## Outil de sélection de site {.tabset}
+## Outil de sélection de site
 
 ### Introduction
 Il s'agit du guide de sélection des sites d'intervention en RDC
@@ -154,7 +154,7 @@ bounds <- riversMappingNew %>%
 
 ```
 
-### Déploiement communautaire
+### <font size = "+4"> <b>  Déploiement communautaire </font size></b>
 ```{r CS data table, echo = F}
 cFilename <- paste0("CSExport", Sys.Date())
 
@@ -178,7 +178,7 @@ DT::datatable(clusterDT, filter = 'top', extensions = c('Scroller', 'Buttons', '
 
 ```
 
-#### <font size = "+2"> <b> Carte des sites communitaire </font size></b>
+#### Carte des sites communitaire
 ```{r Carte des SC, echo = F, out.width='100%'}
 cases_sf_cluster$lab <- paste0("<b>", "ZS = ", cases_sf_cluster$ZS.y,
                             "<br/>", "Province = ", cases_sf_cluster$PROVINCE, 
@@ -218,10 +218,11 @@ bounds <- riversMappingNew %>%
                 opacity = 1.,
                 weight = 2) %>%
     addCircleMarkers(data = cases_sf_cluster, 
-                     fill = "red", 
+                     fill = "red3", 
                      popup = ~lapply(lab, htmltools::HTML),
                      group = "Community sites",
-                     weight = 2, color = "red3") %>%
+                     weight = 2,
+                     color = "#BF180A") %>%
   fitBounds(bounds[1], bounds[2], bounds[3], bounds[4]) %>%
     addLayersControl(
       overlayGroups = c("Community sites"),
