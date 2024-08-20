@@ -13,9 +13,9 @@ riverBuff <- ifelse(exists("params"), params$RiverBuffer, 5000)
 library(sf)
 library(tidyverse)
 library(spdep)
-library(raster)
+#library(raster)
 library(readr)
-library(ggpubr)
+# library(ggpubr)
 
 
 
@@ -32,9 +32,9 @@ cases$ClusterID <- distdfsort2_5k$GroupID[match(cases$cCaseID, distdfsort2_5k$xc
 
 
 cases_sf <- cases %>%
-  filter(!is.na(Longitude)) %>%
+  filter(!is.na(Longitude), 
+         Year %in% startYear:finalYear) %>%
   st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) %>%
-  filter(Year %in% startYear:finalYear) %>%
   mutate(CaseID = row_number(),
         Weight = (Year - 2018) / 5)
 
