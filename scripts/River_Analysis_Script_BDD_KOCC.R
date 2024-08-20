@@ -148,6 +148,9 @@ ZSRiverOutput <- riversIDsSummary %>%
             RiverLength = sum(segLength / 1000)) %>%
   mutate(casesKm = CasesTotal / RiverLength,
          WeightKm = WeightTotal / RiverLength) %>%
-  arrange(desc(WeightKm)) 
+  arrange(desc(WeightKm)) %>%
+  mutate(Status = "New site",
+         Status = ifelse(Start > 0, "Current intervention", Status),
+         Status = ifelse(CasesTotal < caseThreshold & Start == 0, "Non-candidate", Status))
 
 st_write(ZSRiverOutput, "output/rivieres/Rivers_Target.shp", delete_layer = T)
