@@ -23,9 +23,10 @@ library(readr)
 # Compiled data -----------------------------------------------------------
 
 # Case data
-cases <- read_csv("data/CaseData/Cases_Compiled_2000_2023.csv") %>% 
-  bind_rows(read_csv("data/CaseData/Kasai_Case_Coords_infection_Year.csv"))  %>%
-  mutate(cCaseID = row_number())
+lFiles <- list.files("data/CaseData", recursive = F, include.dirs = F, full.names = T)
+lFiles <- lFiles[grepl(".csv", lFiles)]
+
+cases <- do.call(bind_rows, lapply(lFiles, read_csv))
 
 load("data/RImages/distdfsort2_5k.RData")
 
