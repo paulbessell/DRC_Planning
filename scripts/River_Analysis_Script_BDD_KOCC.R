@@ -26,7 +26,8 @@ library(readr)
 lFiles <- list.files("data/CaseData", recursive = F, include.dirs = F, full.names = T)
 lFiles <- lFiles[grepl(".csv", lFiles)]
 
-cases <- do.call(bind_rows, lapply(lFiles, read_csv))
+cases <- do.call(bind_rows, lapply(lFiles, read_csv)) %>%
+  mutate(cCaseID = row_number())
 
 load("data/RImages/distdfsort2_5k.RData")
 
