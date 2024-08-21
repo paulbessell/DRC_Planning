@@ -8,6 +8,7 @@ finalYear <- 2023
 tYears <- finalYear - startYear +1
 caseThreshold <- ifelse(exists("params"), params$`Total du cas minimal`, 5) ### Add someting to look at case density
 riverBuff <- ifelse(exists("params"), params$`Tampon du riviere`, 5000)
+writeOutput <- ifelse(exists("params"), params$`Ecrire des fichiers a afficher`, FALSE)
 
 
 library(sf)
@@ -120,7 +121,7 @@ cases_sf_cluster <- cases_sf %>%
   mutate("nVillages" = n()) %>%
   dplyr::select(-Province)
 
-st_write(cases_sf_cluster, "output/sites_communitaire/Sites_communitaire.shp", delete_layer = T)
+if(writeOutput) st_write(cases_sf_cluster, "output/sites_communitaire/Sites_communitaire.shp", delete_layer = T)
 
 clusterSummarise <- cases_sf_cluster %>%
   st_drop_geometry() %>%
@@ -153,4 +154,4 @@ ZSRiverOutput <- riversIDsSummary %>%
          Status = ifelse(Start > 0, "Current intervention", Status),
          Status = ifelse(CasesTotal < caseThreshold & Start == 0, "Non-candidate", Status))
 
-st_write(ZSRiverOutput, "output/rivieres/Rivers_Target.shp", delete_layer = T)
+if(writeOutput) st_write(ZSRiverOutput, "output/rivieres/Rivers_Target.shp", delete_layer = T)

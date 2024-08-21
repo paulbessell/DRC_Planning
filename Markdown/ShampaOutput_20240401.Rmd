@@ -8,6 +8,7 @@ params:
   Debut annee de analyse: 2019
   Inclure des sites fluviaux: false
   Inclure des sites communautaires: false
+  Ecrire des fichiers a afficher: false
 ---
 
 ```{r setup, include=FALSE, warning=FALSE}
@@ -26,7 +27,7 @@ caseThreshold <- params$`Total du cas minimal` ### Add something to look at case
 source("https://raw.githubusercontent.com/paulbessell/DRC_Planning/master/scripts/River_Analysis_Script_BDD_KOCC.R")
 # source("scripts/River_Analysis_Script_BDD_KOCC.R")
 
-library(DT); library(leaflet)
+library(DT); library(leaflet); library(flextable)
 ```
 
 ## Outil de sélection de site
@@ -36,7 +37,7 @@ Il s'agit du guide de sélection des sites d'intervention en RDC
 
 Les rivières sont choisies en fonction du nombre de cas présents dans la zone tampon. Il peut s'agir du nombre total de cas ou des cas pondérés au cours de la période en question.
 
-Paramètres sélectionnés :
+Paramètres sélectionnés:
 
 ```{r parameterSummary, echo=FALSE, results='asis'}
 cat("#### Débits minimaux des rivières > ", riverFlowCutoff, " cm/s", "\n")
@@ -45,8 +46,23 @@ cat("#### Tampon fluvial = ", riverBuff, " m", "\n")
 
 ```
 
-
 ###  <font size = "+4"> <b> Rivières prioritaires </font size></b>
+### Resume
+```{r RiversSummary, echo = F, warnings = F}
+summaryRiver <- ZSRiverOutput %>%
+  st_drop_geometry() %>%
+  mutate(Zone = ifelse(fProvince %in% c("Kwilu", "Mai Ndombe", "Kwango"), "Bandundu", "Kasai")) %>%
+  group_by(Zone, Status) %>%
+  summarise("River Length (km)" = round(sum(RiverLength), 1),
+            "N. ZS" = n_distinct(plZSAdj),
+            "Total Cases" = round(sum(CasesTotal),1),
+            "Weighted Cases" = round(sum(WeightTotal), 1)) %>%
+  mutate("Total case %" = round(`Total Cases` / sum(`Total Cases`) * 100, 1),
+         "Weighted case %" = round(`Weighted Cases` / sum(`Weighted Cases`) * 100, 1))
+
+flextable(summaryRiver)
+```
+
 ```{r basic data table, echo = F, eval = params$`Inclure des sites fluviaux`}
 cFilename <- paste0("RiversExport", Sys.Date())
 
@@ -158,6 +174,20 @@ bounds <- riversMappingNew %>%
 ```
 
 ### <font size = "+4"> <b>  Déploiement communautaire </font size></b>
+### Resume
+```{r CSSummary, echo = F, warnings = F}
+summaryCS <- clusterSummarise %>%
+  mutate(Zone = ifelse(PROVINCE %in% c("Kwilu", "Mai Ndombe", "Kwango"), "Bandundu", "Kasai")) %>%
+  group_by(Zone) %>%
+  summarise("N. Grouppe" = n(),
+            "N. ZS" = n_distinct(ZS.y),
+            "N. Villages" = sum(nVillages),
+            "Total Cases" = round(sum(ClusterCases),1),
+            "Weighted Cases" = round(sum(ClusterWeight), 1))
+
+flextable(summaryCS)
+```
+
 ```{r CS data table, echo = F, eval = params$`Inclure des sites communautaires`}
 cFilename <- paste0("CSExport", Sys.Date())
 
