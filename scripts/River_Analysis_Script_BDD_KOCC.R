@@ -27,7 +27,11 @@ lFiles <- list.files("data/CaseData", recursive = F, include.dirs = F, full.name
 lFiles <- lFiles[grepl(".csv", lFiles)]
 
 cases <- do.call(bind_rows, lapply(lFiles, read_csv)) %>%
-  mutate(cCaseID = row_number())
+  mutate(cCaseID = row_number())  %>%
+  filter(!is.na(Longitude), 
+         Year %in% startYear:finalYear)
+
+
 
 load("data/RImages/distdfsort2_5k.RData")
 
@@ -35,11 +39,10 @@ cases$ClusterID <- distdfsort2_5k$GroupID[match(cases$cCaseID, distdfsort2_5k$xc
 
 
 cases_sf <- cases %>%
-  filter(!is.na(Longitude), 
-         Year %in% startYear:finalYear) %>%
   st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) %>%
   mutate(CaseID = row_number(),
         Weight = (Year - (startYear - 1)) / tYears)
+if(writeOutput) st_write(cases_sf, "output/cases/cases_included.shp", delete_layer = T)
 
 # ZS
 
