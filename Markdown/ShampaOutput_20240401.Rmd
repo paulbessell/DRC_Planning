@@ -27,69 +27,10 @@ caseThreshold <- params$`Total du cas minimal` ### Add something to look at case
 source("https://raw.githubusercontent.com/paulbessell/DRC_Planning/master/scripts/River_Analysis_Script_BDD_KOCC.R")
 # source("scripts/River_Analysis_Script_BDD_KOCC.R")
 
-library(DT); library(leaflet); library(flextable)
-```
-
-## Outil de sélection de site
-
-### Introduction
-Il s'agit du guide de sélection des sites d'intervention en RDC
-
-Les rivières sont choisies en fonction du nombre de cas présents dans la zone tampon. Il peut s'agir du nombre total de cas ou des cas pondérés au cours de la période en question.
-
-Paramètres sélectionnés:
-
-```{r parameterSummary, echo=FALSE, results='asis'}
-cat("#### Débits minimaux des rivières > ", riverFlowCutoff, " cm/s", "\n")
-cat("#### Seuil de cas > ", caseThreshold, " cas", "\n")
-cat("#### Tampon fluvial = ", riverBuff, " m", "\n")
-
-```
-
-###  <font size = "+4"> <b> Rivières prioritaires </font size></b>
-### Resume
-```{r RiversSummary, echo = F, warnings = F}
-summaryRiver <- ZSRiverOutput %>%
-  st_drop_geometry() %>%
-  mutate(Zone = ifelse(fProvince %in% c("Kwilu", "Mai Ndombe", "Kwango"), "Bandundu", "Kasai")) %>%
-  group_by(Zone, Status) %>%
-  summarise("River Length (km)" = round(sum(RiverLength), 1),
-            "N. ZS" = n_distinct(plZSAdj),
-            "Total Cases" = round(sum(CasesTotal),1),
-            "Weighted Cases" = round(sum(WeightTotal), 1)) %>%
-  mutate("Total case %" = round(`Total Cases` / sum(`Total Cases`) * 100, 1),
-         "Weighted case %" = round(`Weighted Cases` / sum(`Weighted Cases`) * 100, 1))
-
-flextable(summaryRiver)
-```
-
-```{r basic data table, echo = F, eval = params$`Inclure des sites fluviaux`}
-cFilename <- paste0("RiversExport", Sys.Date())
-
-ZSRiverDT <- ZSRiverOutput %>% 
-                st_drop_geometry() %>% 
-                mutate(across(where(is.numeric), ~round(., 2))) %>% 
-                filter(CasesTotal > caseThreshold)
-DT::datatable(ZSRiverDT, filter = 'top', extensions = c('Scroller', 'Buttons', 'ColReorder'),
-                            escape = FALSE,
-                            options = list(deferRender = F,
-                                           colReorder = TRUE,
-                            scrollY = 300, 
-                            scrollX = TRUE,
-                            scroller = TRUE, pageLength = 4,
-                            dom = 'Blfrtip',
-                            buttons = list('copy',
-                                           list(extend = 'csv', filename = cFilename),
-                                           list(extend = 'excel', filename = cFilename),
-                                           list(extend = 'pdf', filename = cFilename), 'print')),
-                            selection = "none",
-              colnames = c("RiverID", "ZS", "Province", "Deploiment", "Debit", "Cas total", "Cas pondérés", "Long. rivière", "Cas / km", "Pondérés / km"))
-
-```
+library(DT); library(leaflet); library(flextable); library(leaflet.extras)
 
 
-#### <font size = "+2"> <b> Carte des fleuves </font size></b>
-```{r Carte des fleuves, echo = F, out.width='100%', eval = params$`Inclure des sites fluviaux`}
+### Data processing
 riversMapping <- ZSRiverOutput %>%
   filter(CasesTotal >= caseThreshold | (Start != 0))
 riversMappingAll <- ZSRiverOutput %>%
@@ -129,6 +70,128 @@ bounds <- riversMappingNew %>%
   st_bbox() %>% 
   as.character()
 
+cases_sf_cluster$lab <- paste0("<b>", "ZS = ", cases_sf_cluster$ZS.y,
+                            "<br/>", "Province = ", cases_sf_cluster$PROVINCE, 
+                            "<br/>", "Village = ", cases_sf_cluster$pVillage, 
+                               "</b></b><br/>", "Cluster No = ", cases_sf_cluster$ClusterID,
+                            "</b><br/>", "Total cases = ", cases_sf_cluster$Cases,  
+                               "</b><br/>", "Weighted cases = ", cases_sf_cluster$Weight)
+```
+
+## Outil de sélection de site
+
+### Introduction
+Il s'agit du guide de sélection des sites d'intervention en RDC
+
+Les rivières sont choisies en fonction du nombre de cas présents dans la zone tampon. Il peut s'agir du nombre total de cas ou des cas pondérés au cours de la période en question.
+
+Paramètres sélectionnés:
+
+```{r parameterSummary, echo=FALSE, results='asis'}
+cat("#### Débits minimaux des rivières > ", riverFlowCutoff, " cm/s", "\n")
+cat("#### Seuil de cas > ", caseThreshold, " cas", "\n")
+cat("#### Tampon fluvial = ", riverBuff, " m", "\n")
+
+```
+
+###  <font size = "+4"> <b> Rivières prioritaires </font size></b>
+### Résumé
+```{r RiversSummary, echo = F, warnings = F}
+summaryRiver <- ZSRiverOutput %>%
+  st_drop_geometry() %>%
+  mutate(Zone = ifelse(fProvince %in% c("Kwilu", "Mai Ndombe", "Kwango"), "Bandundu", "Kasai")) %>%
+  group_by(Zone, Status) %>%
+  summarise("River Length (km)" = round(sum(RiverLength), 1),
+            "N. ZS" = n_distinct(plZSAdj),
+            "Total Cases" = round(sum(CasesTotal),1),
+            "Weighted Cases" = round(sum(WeightTotal), 1)) %>%
+  mutate("Total case %" = round(`Total Cases` / sum(`Total Cases`) * 100, 1),
+         "Weighted case %" = round(`Weighted Cases` / sum(`Weighted Cases`) * 100, 1))
+
+flextable(summaryRiver)
+```
+
+#### <font size = "+2"> <b> Carte des interventions </font size></b>
+```{r Carte des interventions, echo = F, out.width='100%'}
+
+  leaflet(riversMappingNew) %>%
+    addTiles(group = "Streets") %>%
+        addPolygons(data = zsBDD,
+               fillColor = "white",
+                fillOpacity = 0,
+                color = "black",
+                opacity = 0.5,
+                weight = 1,
+                highlightOptions = highlightOptions(stroke = 4, weight = 3, opacity = 1),
+                popup = ~lapply(lab, htmltools::HTML)) %>%
+        addPolygons(data = provinces,
+                fill = NA,
+                color = "black",
+                opacity = 1.,
+                weight = 2) %>%
+    addPolylines(data = riversMappingAll,
+                 popup = ~lapply(paste0("<b>", "Non-candidate", "<br/>",lab), htmltools::HTML),
+                 opacity = 1,
+                 weight = 1,
+                 color = "#214C9F",
+                 highlightOptions = highlightOptions(stroke = 4, weight = 6, opacity = 1),
+                 group = "Non-Candidate") %>%
+    addPolylines(popup = ~lapply(paste0("<b>", "Candidate site", "<br/>",lab), htmltools::HTML),
+                 opacity = 1,
+                 weight = 3,
+                 color = "#BF180A",
+                 highlightOptions = highlightOptions(stroke = 4, weight = 6, opacity = 1),
+                 group = "New Interventions") %>%
+    addPolylines(data = riversMappingCurrent,
+                 popup = ~lapply(paste0("<b>", "Current site", "<br/>",lab), htmltools::HTML),
+                 opacity = 1,
+                 weight = 3,
+                 color = "#214C9F",
+                 highlightOptions = highlightOptions(stroke = 4, weight = 6, opacity = 1),
+                 group = "Current Interventions")  %>%
+    addCircleMarkers(data = cases_sf_cluster, 
+                     fill = "red3", 
+                     popup = ~lapply(lab, htmltools::HTML),
+                     group = "Community sites",
+                     weight = 2,
+                     color = "#BF180A") %>%
+  addHeatmap(cases, lng = cases$Longitude, lat = cases$Latitude, intensity = (cases$Cases * 20), radius = 30, group = "Case heat map") %>%
+  fitBounds(bounds[1], bounds[2], bounds[3], bounds[4]) %>%
+    addLayersControl(
+      overlayGroups = c("New Interventions", "Current Interventions", "Non-Candidate", "Community sites", "Case heat map"),
+      options = layersControlOptions(collapsed = FALSE)
+    ) %>%
+    hideGroup("Non-Candidate")
+
+```
+
+```{r basic data table, echo = F, eval = params$`Inclure des sites fluviaux`}
+cFilename <- paste0("RiversExport", Sys.Date())
+
+ZSRiverDT <- ZSRiverOutput %>% 
+                st_drop_geometry() %>% 
+                mutate(across(where(is.numeric), ~round(., 2))) %>% 
+                filter(CasesTotal > caseThreshold)
+DT::datatable(ZSRiverDT, filter = 'top', extensions = c('Scroller', 'Buttons', 'ColReorder'),
+                            escape = FALSE,
+                            options = list(deferRender = F,
+                                           colReorder = TRUE,
+                            scrollY = 300, 
+                            scrollX = TRUE,
+                            scroller = TRUE, pageLength = 4,
+                            dom = 'Blfrtip',
+                            buttons = list('copy',
+                                           list(extend = 'csv', filename = cFilename),
+                                           list(extend = 'excel', filename = cFilename),
+                                           list(extend = 'pdf', filename = cFilename), 'print')),
+                            selection = "none",
+              colnames = c("RiverID", "ZS", "Province", "Deploiment", "Debit", "Cas total", "Cas pondérés", "Long. rivière", "Cas / km", "Pondérés / km"))
+
+```
+
+
+#### <font size = "+2"> <b> Carte des fleuves </font size></b>
+```{r Carte des fleuves, echo = F, out.width='100%', eval = params$`Inclure des sites fluviaux`}
   leaflet(riversMappingNew) %>%
     addTiles(group = "Streets") %>%
         addPolygons(data = zsBDD,
@@ -174,7 +237,7 @@ bounds <- riversMappingNew %>%
 ```
 
 ### <font size = "+4"> <b>  Déploiement communautaire </font size></b>
-### Resume
+### Résumé
 ```{r CSSummary, echo = F, warnings = F}
 summaryCS <- clusterSummarise %>%
   mutate(Zone = ifelse(PROVINCE %in% c("Kwilu", "Mai Ndombe", "Kwango"), "Bandundu", "Kasai")) %>%
@@ -213,28 +276,6 @@ DT::datatable(clusterDT, filter = 'top', extensions = c('Scroller', 'Buttons', '
 
 #### <font size = "+2"> <b> Carte des sites communitaire </font size></b>
 ```{r Carte des SC, echo = F, out.width='100%', eval = params$`Inclure des sites communautaires`}
-cases_sf_cluster$lab <- paste0("<b>", "ZS = ", cases_sf_cluster$ZS.y,
-                            "<br/>", "Province = ", cases_sf_cluster$PROVINCE, 
-                            "<br/>", "Village = ", cases_sf_cluster$pVillage, 
-                               "</b></b><br/>", "Cluster No = ", cases_sf_cluster$ClusterID,
-                            "</b><br/>", "Total cases = ", cases_sf_cluster$Cases,  
-                               "</b><br/>", "Weighted cases = ", cases_sf_cluster$Weight)
-
-riversMappingNew <- riversMapping %>%
-  filter(Start == 0)
-  
-riversMappingCurrent <- riversMapping %>%
-  filter(Start !=0)
-
-zsBDD <- zs %>%
-  filter(PROVINCE %in% unique(rivers$fProvince))
-zsBDD$lab <- paste0("<b>", "ZS = ", zsBDD$ZS,
-                   "<br/>", "Province = ", zsBDD$PROVINCE, "</b>")
-
-bounds <- riversMappingNew %>% 
-  st_bbox() %>% 
-  as.character()
-
   leaflet(riversMappingNew) %>%
     addTiles(group = "Streets") %>%
         addPolygons(data = zsBDD,
