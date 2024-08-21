@@ -38,7 +38,7 @@ cases_sf <- cases %>%
          Year %in% startYear:finalYear) %>%
   st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) %>%
   mutate(CaseID = row_number(),
-        Weight = (Year - startYear - 1) / tYears)
+        Weight = (Year - (startYear - 1)) / tYears)
 
 # ZS
 
