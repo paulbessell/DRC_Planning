@@ -6,6 +6,7 @@ params:
   Debit minimal du riviere: 15
   Total du cas minimal: 5
   Debut annee de analyse: 2019
+  Analyse les donnes aggrege 2019-2023: true
   Inclure des sites fluviaux: false
   Inclure des sites communautaires: false
   Ecrire des fichiers a afficher: false
@@ -24,8 +25,8 @@ tYears <- finalYear - startYear +1
 caseThreshold <- params$`Total du cas minimal` ### Add something to look at case density
 
 #source("scripts/River_Analysis_Script_20240401.R", encoding = "UTF-8")
-source("https://raw.githubusercontent.com/paulbessell/DRC_Planning/master/scripts/River_Analysis_Script_BDD_KOCC.R")
-# source("scripts/River_Analysis_Script_BDD_KOCC.R")
+# source("https://raw.githubusercontent.com/paulbessell/DRC_Planning/master/scripts/River_Analysis_Script_BDD_KOCC.R")
+source("scripts/River_Analysis_Script_BDD_KOCC.R")
 
 library(DT); library(leaflet); library(flextable); library(leaflet.extras)
 
