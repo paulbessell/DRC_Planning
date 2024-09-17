@@ -190,53 +190,6 @@ DT::datatable(ZSRiverDT, filter = 'top', extensions = c('Scroller', 'Buttons', '
 
 ```
 
-
-#### <font size = "+2"> <b> Carte des fleuves </font size></b>
-```{r Carte des fleuves, echo = F, out.width='100%', eval = params$`Inclure des sites fluviaux`}
-  leaflet(riversMappingNew) %>%
-    addTiles(group = "Streets") %>%
-        addPolygons(data = zsBDD,
-               fillColor = "white",
-                fillOpacity = 0,
-                color = "black",
-                opacity = 0.5,
-                weight = 1,
-                highlightOptions = highlightOptions(stroke = 4, weight = 3, opacity = 1),
-                popup = ~lapply(lab, htmltools::HTML)) %>%
-        addPolygons(data = provinces,
-                fill = NA,
-                color = "black",
-                opacity = 1.,
-                weight = 2) %>%
-    addPolylines(data = riversMappingAll,
-                 popup = ~lapply(paste0("<b>", "Non-candidate", "<br/>",lab), htmltools::HTML),
-                 opacity = 1,
-                 weight = 1,
-                 color = "#214C9F",
-                 highlightOptions = highlightOptions(stroke = 4, weight = 6, opacity = 1),
-                 group = "Non-Candidate") %>%
-    addPolylines(popup = ~lapply(paste0("<b>", "Candidate site", "<br/>",lab), htmltools::HTML),
-                 opacity = 1,
-                 weight = 3,
-                 color = "#BF180A",
-                 highlightOptions = highlightOptions(stroke = 4, weight = 6, opacity = 1),
-                 group = "New Interventions") %>%
-    addPolylines(data = riversMappingCurrent,
-                 popup = ~lapply(paste0("<b>", "Current site", "<br/>",lab), htmltools::HTML),
-                 opacity = 1,
-                 weight = 3,
-                 color = "#214C9F",
-                 highlightOptions = highlightOptions(stroke = 4, weight = 6, opacity = 1),
-                 group = "Current Interventions") %>%
-  fitBounds(bounds[1], bounds[2], bounds[3], bounds[4]) %>%
-    addLayersControl(
-      overlayGroups = c("New Interventions", "Current Interventions", "Non-Candidate"),
-      options = layersControlOptions(collapsed = FALSE)
-    ) %>%
-    hideGroup("Non-Candidate")
-
-```
-
 ### <font size = "+4"> <b>  Déploiement communautaire </font size></b>
 ### Résumé
 ```{r CSSummary, echo = F, warnings = F}
@@ -275,31 +228,3 @@ DT::datatable(clusterDT, filter = 'top', extensions = c('Scroller', 'Buttons', '
 
 ```
 
-#### <font size = "+2"> <b> Carte des sites communitaire </font size></b>
-```{r Carte des SC, echo = F, out.width='100%', eval = params$`Inclure des sites communautaires`}
-  leaflet(riversMappingNew) %>%
-    addTiles(group = "Streets") %>%
-        addPolygons(data = zsBDD,
-               fillColor = "white",
-                fillOpacity = 0,
-                color = "black",
-                opacity = 0.5,
-                weight = 1,
-                highlightOptions = highlightOptions(stroke = 4, weight = 3, opacity = 1),
-                popup = ~lapply(lab, htmltools::HTML)) %>%
-        addPolygons(data = provinces,
-                fill = NA,
-                color = "black",
-                opacity = 1.,
-                weight = 2) %>%
-    addCircleMarkers(data = cases_sf_cluster, 
-                     fill = "red3", 
-                     popup = ~lapply(lab, htmltools::HTML),
-                     group = "Community sites",
-                     weight = 2,
-                     color = "#BF180A") %>%
-  fitBounds(bounds[1], bounds[2], bounds[3], bounds[4]) %>%
-    addLayersControl(
-      overlayGroups = c("Community sites"),
-      options = layersControlOptions(collapsed = FALSE)
-    ) 

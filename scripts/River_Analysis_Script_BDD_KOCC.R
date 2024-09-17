@@ -15,10 +15,8 @@ aggregatedData <- ifelse(exists("params"), params$`Analyse les donnes aggrege 20
 library(sf)
 library(tidyverse)
 library(spdep)
-#library(raster)
 library(readr)
 library(readxl)
-# library(ggpubr)
 
 
 # Aggregated data ---------------------------------------------------------
@@ -58,6 +56,7 @@ if(aggregatedData){
            PROVINCE = recode(PROVINCE, "MAI NDOMBE" = "Mai Ndombe"))
   
   provinces <- read_sf("data/Spatial/Provinces/Provinces_2.shp")
+  coordinations <- read_sf("data/Spatial/Coordinations/bdd_kasia_coord.shp")
   
   # Rivers ------------------------------------------------------------------
   
@@ -67,7 +66,10 @@ if(aggregatedData){
     mutate(SegmentID = row_number(),
            segLength = as.numeric(st_length(.)),
            RID = row_number(),
-           fProvince = recode(fProvince, "MAI NDOMBE" = "Mai Ndombe"))
+           fProvince = recode(fProvince, "MAI NDOMBE" = "Mai Ndombe")) %>%
+    left_join(zs %>%
+                st_drop_geometry() %>%
+                dplyr::select(ZS, Coordtion))
   
   # interventionRivers <- rivers %>%
   #  filter(!is.na(Start))
@@ -207,6 +209,7 @@ if(!aggregatedData){
            PROVINCE = recode(PROVINCE, "MAI NDOMBE" = "Mai Ndombe"))
   
   provinces <- read_sf("data/Spatial/Provinces/Provinces_2.shp")
+  coordinations <- read_sf("data/Spatial/Coordinations/bdd_kasia_coord.shp")
   
   # Rivers ------------------------------------------------------------------
   
@@ -216,7 +219,10 @@ if(!aggregatedData){
     mutate(SegmentID = row_number(),
            segLength = as.numeric(st_length(.)),
            RID = row_number(),
-           fProvince = recode(fProvince, "MAI NDOMBE" = "Mai Ndombe"))
+           fProvince = recode(fProvince, "MAI NDOMBE" = "Mai Ndombe")) %>%
+    left_join(zs %>%
+                st_drop_geometry() %>%
+                dplyr::select(ZS, Coordtion))
   
   # interventionRivers <- rivers %>%
   #  filter(!is.na(Start))
