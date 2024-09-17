@@ -66,10 +66,11 @@ if(aggregatedData){
     mutate(SegmentID = row_number(),
            segLength = as.numeric(st_length(.)),
            RID = row_number(),
-           fProvince = recode(fProvince, "MAI NDOMBE" = "Mai Ndombe")) %>%
+           fProvince = recode(fProvince, "MAI NDOMBE" = "Mai Ndombe"),
+           fProvince = gsub("Kasaï", "Kasai", fProvince)) %>%
     left_join(zs %>%
                 st_drop_geometry() %>%
-                dplyr::select(ZS, Coordtion))
+                dplyr::select(PROVINCE, ZS, Coordtion), by = c("fProvince" = "PROVINCE", "plZSAdj" = "ZS"))
   
   # interventionRivers <- rivers %>%
   #  filter(!is.na(Start))
@@ -147,7 +148,7 @@ if(aggregatedData){
   
   
   riversIDsSummary <- rivers %>%
-    dplyr::select(RID, DIS_AV_, pRivrID, plZSAdj, fProvince, Start, segLength) %>%
+    dplyr::select(RID, DIS_AV_, pRivrID, plZSAdj, fProvince, Coordtion, Start, segLength) %>%
     left_join(caseRiverSummary) %>%
     mutate(CasesAdjTotal = replace_na(CasesAdjTotal, 0),
            WeightAdjTotal = replace_na(WeightAdjTotal, 0))
@@ -158,7 +159,7 @@ if(aggregatedData){
   sum(cases_sf$Cases) - sum(riversIDsSummary$CasesAdjTotal)
   
   ZSRiverOutput <- riversIDsSummary %>%
-    group_by(pRivrID, plZSAdj, fProvince, Start) %>%
+    group_by(pRivrID, plZSAdj, fProvince, Coordtion, Start) %>%
     summarise(Discharge = min(DIS_AV_, na.rm = T),
               CasesTotal = sum(CasesAdjTotal),
               WeightTotal = sum(WeightAdjTotal),
@@ -219,10 +220,11 @@ if(!aggregatedData){
     mutate(SegmentID = row_number(),
            segLength = as.numeric(st_length(.)),
            RID = row_number(),
-           fProvince = recode(fProvince, "MAI NDOMBE" = "Mai Ndombe")) %>%
+           fProvince = recode(fProvince, "MAI NDOMBE" = "Mai Ndombe"),
+           fProvince = gsub("Kasaï", "Kasai", fProvince)) %>%
     left_join(zs %>%
                 st_drop_geometry() %>%
-                dplyr::select(ZS, Coordtion))
+                dplyr::select(PROVINCE, ZS, Coordtion), by = c("fProvince" = "PROVINCE", "plZSAdj" = "ZS"))
   
   # interventionRivers <- rivers %>%
   #  filter(!is.na(Start))
@@ -298,7 +300,7 @@ if(!aggregatedData){
   
   
   riversIDsSummary <- rivers %>%
-    dplyr::select(RID, DIS_AV_, pRivrID, plZSAdj, fProvince, Start, segLength) %>%
+    dplyr::select(RID, DIS_AV_, pRivrID, plZSAdj, fProvince, Coordtion, Start, segLength) %>%
     left_join(caseRiverSummary) %>%
     mutate(CasesAdjTotal = replace_na(CasesAdjTotal, 0),
            WeightAdjTotal = replace_na(WeightAdjTotal, 0))
@@ -309,7 +311,7 @@ if(!aggregatedData){
   sum(cases_sf$Cases) - sum(riversIDsSummary$CasesAdjTotal)
   
   ZSRiverOutput <- riversIDsSummary %>%
-    group_by(pRivrID, plZSAdj, fProvince, Start) %>%
+    group_by(pRivrID, plZSAdj, fProvince, Coordtion, Start) %>%
     summarise(Discharge = min(DIS_AV_, na.rm = T),
               CasesTotal = sum(CasesAdjTotal),
               WeightTotal = sum(WeightAdjTotal),

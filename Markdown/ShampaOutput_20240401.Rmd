@@ -28,7 +28,7 @@ caseThreshold <- params$`Total du cas minimal` ### Add something to look at case
 # source("https://raw.githubusercontent.com/paulbessell/DRC_Planning/master/scripts/River_Analysis_Script_BDD_KOCC.R")
 source("scripts/River_Analysis_Script_BDD_KOCC.R")
 
-library(DT); library(leaflet); library(flextable); library(leaflet.extras)
+library(DT); library(leaflet); library(flextable); library(leaflet.extras); library(plotly)
 
 
 ### Data processing
@@ -39,6 +39,7 @@ riversMappingAll <- ZSRiverOutput %>%
 
 riversMapping$lab <- paste0("<b>", "ZS = ", riversMapping$plZSAdj,
                             "<br/>", "Province = ", riversMapping$fProvince, 
+                              "<br/>", "Coordination = ", riversMapping$Coordtion, 
                                "</b></b><br/>", "Intervention start = ", ifelse(riversMapping$Start==0, "", riversMapping$Start),
                             "</b><br/>", "Discharge (cm) = ", round(riversMapping$Discharge,1),    
                             "</b><br/>", "Total cases = ", round(riversMapping$CasesTotal,1),  
@@ -49,6 +50,7 @@ riversMapping$lab <- paste0("<b>", "ZS = ", riversMapping$plZSAdj,
 
 riversMappingAll$lab <- paste0("<b>", "ZS = ", riversMappingAll$plZSAdj,
                             "<br/>", "Province = ", riversMappingAll$fProvince, 
+                            "<br/>", "Coordination = ", riversMappingAll$Coordtion, 
                             "</b></b><br/>", "Discharge (cm) = ", round(riversMappingAll$Discharge,1),    
                             "</b><br/>", "Total cases = ", round(riversMappingAll$CasesTotal,1),  
                                "</b><br/>", "Total weighted cases = ", round(riversMappingAll$WeightTotal,1),
@@ -100,7 +102,9 @@ cat("#### Tampon fluvial = ", riverBuff, " m", "\n")
 ```{r RiversSummary, echo = F, warnings = F}
 summaryRiver <- ZSRiverOutput %>%
   st_drop_geometry() %>%
-  mutate(Zone = ifelse(fProvince %in% c("Kwilu", "Mai Ndombe", "Kwango"), "Bandundu", "Kasai")) %>%
+#  mutate(Zone = ifelse(fProvince %in% c("Kwilu", "Mai Ndombe", "Kwango"), "Bandundu", "Kasai")) %>%
+  mutate(Zone = Coordtion) %>%
+  filter(Zone != "") %>%
   group_by(Zone, Status) %>%
   summarise("River Length (km)" = round(sum(RiverLength), 1),
             "N. ZS" = n_distinct(plZSAdj),
@@ -125,11 +129,18 @@ flextable(summaryRiver)
                 weight = 1,
                 highlightOptions = highlightOptions(stroke = 4, weight = 3, opacity = 1),
                 popup = ~lapply(lab, htmltools::HTML)) %>%
+        addPolygons(data = coordinations,
+                fill = NA,
+                color = "black",
+                opacity = 1.,
+                weight = 2,
+                group = "Coordination") %>%
         addPolygons(data = provinces,
                 fill = NA,
                 color = "black",
                 opacity = 1.,
-                weight = 2) %>%
+                weight = 2,
+                group = "Province") %>%
     addPolylines(data = riversMappingAll,
                  popup = ~lapply(paste0("<b>", "Non-candidate", "<br/>",lab), htmltools::HTML),
                  opacity = 1,
@@ -159,10 +170,11 @@ flextable(summaryRiver)
   addHeatmap(cases, lng = cases$Longitude, lat = cases$Latitude, intensity = (cases$Cases * 20), radius = 30, group = "Case heat map") %>%
   fitBounds(bounds[1], bounds[2], bounds[3], bounds[4]) %>%
     addLayersControl(
-      overlayGroups = c("New Interventions", "Current Interventions", "Non-Candidate", "Community sites", "Case heat map"),
+      overlayGroups = c("New Interventions", "Current Interventions", "Non-Candidate", "Community sites", "Case heat map", "Province", "Coordination"),
       options = layersControlOptions(collapsed = FALSE)
     ) %>%
-    hideGroup("Non-Candidate")
+    hideGroup(c("Non-Candidate", "Province"))
+
 
 ```
 
@@ -186,9 +198,40 @@ DT::datatable(ZSRiverDT, filter = 'top', extensions = c('Scroller', 'Buttons', '
                                            list(extend = 'excel', filename = cFilename),
                                            list(extend = 'pdf', filename = cFilename), 'print')),
                             selection = "none",
-              colnames = c("RiverID", "ZS", "Province", "Deploiment", "Debit", "Cas total", "Cas pondérés", "Long. rivière", "Cas / km", "Pondérés / km", "Status"))
+              colnames = c("RiverID", "ZS", "Province", "Coordination", "Deploiment", "Debit", "Cas total", "Cas pondérés", "Long. rivière", "Cas / km", "Pondérés / km", "Status"))
+```
+
+```{r priority chart, echo = F, eval = params$`Inclure des sites fluviaux`}
+
+zsRiverPlot <- ZSRiverOutput %>%
+  st_drop_geometry() %>%
+  ungroup() %>%
+  filter(Status != "Non-candidate") %>%
+  arrange(desc(casesKm)) %>%
+  mutate(cumLength = cumsum(RiverLength),
+         cumCases = cumsum(CasesTotal),
+         rowID = row_number(),
+         label = paste0(Status, "\n", plZSAdj, "\n", fProvince, "(", Coordtion, ")", "\n", "Discharge = ",  round(Discharge,1), "\n", "Cases = ", round(CasesTotal, 1), "\n", "Length = ", round(RiverLength, 3))) 
+
+
+plotCases <- ggplot(zsRiverPlot, aes(x = rowID, y = cumLength, width = (sqrt(CasesTotal / max(CasesTotal)) * 1.5) + 0.2, fill = Coordtion, text = label)) + 
+  geom_col() + 
+  scale_fill_manual(values = c("BDDS" = "darkblue", "BDDN" = "blue2", "KOR" = "green4", "KOCC" = "green3")) +
+  theme(legend.position = "top") +
+  geom_point(data = zsRiverPlot %>% filter(Status == "New site"), aes(x = rowID, y = cumLength + 100), shape = 12) +
+  theme(axis.title.x = element_blank()) +
+  ylab("Cumulative river length (km)")
+
+ggplotly(plotCases, tooltip = "text") %>%
+  layout(legend = list(
+    orientation = "h",
+    y = -0.1,
+    x = 0))
+
 
 ```
+
+
 
 ### <font size = "+4"> <b>  Déploiement communautaire </font size></b>
 ### Résumé
