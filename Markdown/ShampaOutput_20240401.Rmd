@@ -46,7 +46,8 @@ riversMapping$lab <- paste0("<b>", "ZS = ", riversMapping$plZSAdj,
                                "</b><br/>", "Total weighted cases = ", round(riversMapping$WeightTotal,1),
                                "</b><br/>", "Cases / Km = ", round(riversMapping$casesKm,3),
                                "</b><br/>", "Weighted cases / Km = ", round(riversMapping$WeightKm,3),
-                               "</b><br/>", "Length = ", round(riversMapping$RiverLength,1))
+                               "</b><br/>", "Length = ", round(riversMapping$RiverLength,1),
+                               "</b><br/>", "Rank = ", riversMapping$Rank)
 
 riversMappingAll$lab <- paste0("<b>", "ZS = ", riversMappingAll$plZSAdj,
                             "<br/>", "Province = ", riversMappingAll$fProvince, 
@@ -99,7 +100,7 @@ cat("#### Tampon fluvial = ", riverBuff, " m", "\n")
 
 ###  <font size = "+4"> <b> Rivières prioritaires </font size></b>
 ### Résumé
-```{r RiversSummary, echo = F, warnings = F}
+```{r RiversSummary, echo = F, warnings = F, message = FALSE}
 summaryRiver <- ZSRiverOutput %>%
   st_drop_geometry() %>%
 #  mutate(Zone = ifelse(fProvince %in% c("Kwilu", "Mai Ndombe", "Kwango"), "Bandundu", "Kasai")) %>%
@@ -198,10 +199,10 @@ DT::datatable(ZSRiverDT, filter = 'top', extensions = c('Scroller', 'Buttons', '
                                            list(extend = 'excel', filename = cFilename),
                                            list(extend = 'pdf', filename = cFilename), 'print')),
                             selection = "none",
-              colnames = c("RiverID", "ZS", "Province", "Coordination", "Deploiment", "Debit", "Cas total", "Cas pondérés", "Long. rivière", "Cas / km", "Pondérés / km", "Status"))
+              colnames = c("RiverID", "ZS", "Province", "Coordination", "Deploiment", "Debit", "Cas total", "Cas pondérés", "Long. rivière", "Cas / km", "Pondérés / km", "Status", "Rank", "Total river (km)"))
 ```
 
-```{r priority chart, echo = F, eval = params$`Inclure des sites fluviaux`}
+```{r priority chart, echo = F, eval = params$`Inclure des sites fluviaux`, message = FALSE, warning = FALSE}
 
 zsRiverPlot <- ZSRiverOutput %>%
   st_drop_geometry() %>%
@@ -211,7 +212,7 @@ zsRiverPlot <- ZSRiverOutput %>%
   mutate(cumLength = cumsum(RiverLength),
          cumCases = cumsum(CasesTotal),
          rowID = row_number(),
-         label = paste0(Status, "\n", plZSAdj, "\n", fProvince, "(", Coordtion, ")", "\n", "Discharge = ",  round(Discharge,1), "\n", "Cases = ", round(CasesTotal, 1), "\n", "Length = ", round(RiverLength, 3))) 
+         label = paste0(Status, "\n", plZSAdj, "\n", fProvince, "(", Coordtion, ")", "\n", "Discharge = ",  round(Discharge,1), "\n", "Cases = ", round(CasesTotal, 1), "\n", "Length = ", round(RiverLength, 1))) 
 
 
 plotCases <- ggplot(zsRiverPlot, aes(x = rowID, y = cumLength, width = (sqrt(CasesTotal / max(CasesTotal)) * 1.5) + 0.2, fill = Coordtion, text = label)) + 

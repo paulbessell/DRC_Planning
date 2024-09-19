@@ -47,7 +47,15 @@ if(aggregatedData){
     st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) %>%
     mutate(Weight = Cases)
   if(writeOutput) st_write(cases_sf %>% dplyr::select(-PROVINCE), "output/cases/cases_included.shp", delete_layer = T)
-  
+
+    
+  cases_sf_agg <- cases %>%
+    st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) %>%
+    group_by(geometry) %>%
+    summarise(Cases = sum(Cases)) %>%
+    mutate(Weight = Cases)
+  if(writeOutput) st_write(cases_sf_agg, "output/cases/cases_agg_included.shp", delete_layer = T)
+
   # ZS
   
   zs <- read_sf("data/Spatial/ZS/RDC_Zones_De_Sante_Repair.shp") %>% 
@@ -167,9 +175,12 @@ if(aggregatedData){
     mutate(casesKm = CasesTotal / RiverLength,
            WeightKm = WeightTotal / RiverLength) %>%
     arrange(desc(WeightKm)) %>%
+    ungroup() %>%
     mutate(Status = "New site",
            Status = ifelse(Start > 0, "Current intervention", Status),
-           Status = ifelse(CasesTotal < caseThreshold & Start == 0, "Non-candidate", Status))
+           Status = ifelse(CasesTotal < caseThreshold & Start == 0, "Non-candidate", Status),
+           Rank = row_number(),
+           cumLength = cumsum(RiverLength))
   
   if(writeOutput) st_write(ZSRiverOutput, "output/rivieres/Rivers_Target.shp", delete_layer = T)
 }
@@ -189,6 +200,13 @@ if(!aggregatedData){
     filter(!is.na(Longitude), 
            Year %in% startYear:finalYear)
   
+  cases_sf_agg <- cases %>%
+    mutate(Weight = (Year - (startYear - 1)) / tYears) %>%
+    st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) %>%
+    group_by(geometry) %>%
+    summarise(Cases = sum(Cases),
+              Weight = sum(Weight))
+  if(writeOutput) st_write(cases_sf_agg, "output/cases/cases_agg_included.shp", delete_layer = T)
   
   
   load("data/RImages/distdfsort2_5k.RData")
@@ -319,9 +337,12 @@ if(!aggregatedData){
     mutate(casesKm = CasesTotal / RiverLength,
            WeightKm = WeightTotal / RiverLength) %>%
     arrange(desc(WeightKm)) %>%
+    ungroup() %>%
     mutate(Status = "New site",
            Status = ifelse(Start > 0, "Current intervention", Status),
-           Status = ifelse(CasesTotal < caseThreshold & Start == 0, "Non-candidate", Status))
+           Status = ifelse(CasesTotal < caseThreshold & Start == 0, "Non-candidate", Status),
+           Rank = row_number(),
+           cumLength = cumsum(RiverLength))
   
   if(writeOutput) st_write(ZSRiverOutput, "output/rivieres/Rivers_Target.shp", delete_layer = T)
 }
