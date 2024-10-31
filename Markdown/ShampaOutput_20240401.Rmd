@@ -166,6 +166,7 @@ flextable(summaryRiver)
 
 ```
 
+### <font size = "+4"> <b>  Rivières ciblées </font size></b>
 ```{r basic data table, echo = F, eval = params$`Inclure des sites fluviaux`}
 cFilename <- paste0("RiversExport", Sys.Date())
 
